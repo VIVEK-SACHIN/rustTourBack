@@ -23,7 +23,9 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn from_env() -> Self {
-        dotenvy::dotenv().ok();
+        if let Err(err) = dotenvy::dotenv() {
+            eprintln!("dotenv load warning: {err}");
+        }
         
         let host = env::var("SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
         let port = env::var("SERVER_PORT")
