@@ -34,7 +34,6 @@ impl AppConfig {
             .unwrap_or(3000);
         let hello_message = env::var("HELLO_MESSAGE").unwrap_or_else(|_| "Hello, World!".to_string());
         let app_env = env::var("APP_ENV")
-            .or_else(|_| env::var("RUST_ENV"))
             .unwrap_or_else(|_| "development".to_string());
         let log_level = env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
         let database = env::var("DATABASE").unwrap_or_default();

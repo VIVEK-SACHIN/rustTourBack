@@ -1,12 +1,15 @@
 
 
 mod config;
+mod models;
 
 use axum::{
     routing::{get},
     Router,
 };
+use bson::doc;
 use config::AppConfig;
+use mongodb::Client;
 
 #[axum::debug_handler]
 async fn hello_world(message: String) -> String {
@@ -33,6 +36,18 @@ async fn main() {
     let app_config = AppConfig::from_env();
     let addr = app_config.address();
 
+    let db_uri = app_config.resolved_database_url();
+    let client = Client::with_uri_str(&db_uri)
+        .await
+        .expect("Failed to create MongoDB client");
+
+    let admin_db = client.database("admin");
+    admin_db
+        .run_command(doc! { "ping": 1 })
+        .await
+        .expect("Failed to ping MongoDB");
+
+    println!("✅ Connected to MongoDB successfully");
     println!("🚀 Starting server on http://{}", addr);
 
     let app: Router = Router::new().route(
