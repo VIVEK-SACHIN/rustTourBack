@@ -1,35 +1,57 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use mongodb::bson::oid::ObjectId;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tour {
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<ObjectId>,
+    
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub slug: String,
+    #[serde(default)]
     pub duration: u32,
+    #[serde(default)]
     pub max_group_size: u32,
+    #[serde(default)]
     pub difficulty: Difficulty,
+    #[serde(default)]
     pub ratings_average: f64,
+    #[serde(default)]
     pub ratings_quantity: u32,
+    #[serde(default)]
     pub price: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub price_discount: Option<f64>,
+    #[serde(default)]
     pub summary: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(default)]
     pub image_cover: String,
+    #[serde(default)]
     pub images: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at: Option<DateTime<Utc>>,
+    #[serde(default)]
     pub start_dates: Vec<DateTime<Utc>>,
+    #[serde(default)]
     pub secret_tour: bool,
+    #[serde(default)]
     pub start_location: Location,
+    #[serde(default)]
     pub locations: Vec<Location>,
-    pub guides: Vec<String>, // ObjectIds as strings
+    #[serde(default)]
+    pub guides: Vec<ObjectId>, // ObjectIds as ObjectId type
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Location {
+    #[serde(default)]
     pub r#type: String, // "Point"
+    #[serde(default)]
     pub coordinates: Vec<f64>, // [longitude, latitude]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<String>,
@@ -38,10 +60,10 @@ pub struct Location {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub day: Option<u32>,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum Difficulty {
+    #[default]
     Easy,
     Medium,
     Difficult,
@@ -50,6 +72,7 @@ pub enum Difficulty {
 impl Default for Tour {
     fn default() -> Self {
         Self {
+            id: None,
             name: String::new(),
             slug: String::new(),
             duration: 0,

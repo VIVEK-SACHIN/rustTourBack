@@ -1,21 +1,22 @@
-
-
 mod config;
+mod db;
+mod error;
+mod handlers;
+mod middleware;
 mod models;
 
-use axum::{
-    routing::{get},
-    Router,
-};
-use bson::doc;
+use axum::{Router, middleware as axum_middleware, routing::get};
 use config::AppConfig;
-use mongodb::Client;
+use db::mongodb::create_mongo_client;
+use error::AppError;
+use handlers::{get_all_tours, get_all_users};
 
+//is an attribute macro.It helps give better compiler errors for Axum handlers.
+// Without it, Axum errors can be huge and confusing.
 #[axum::debug_handler]
 async fn hello_world(message: String) -> String {
     message
 }
-
 
 // this is a procedural macro from the Tokio crate (an asynchronous runtime for Rust).
 //  It serves the following purposes:
@@ -36,24 +37,30 @@ async fn main() {
     let app_config = AppConfig::from_env();
     let addr = app_config.address();
 
-    let db_uri = app_config.resolved_database_url();
-    let client = Client::with_uri_str(&db_uri)
-        .await
-        .expect("Failed to create MongoDB client");
+    let client = match create_mongo_client(&app_config).await {
+        Ok(client) => client,
+        Err(err) => {
+            panic!("Failed to create MongoDB client: {}", err);
+        }
+    };
 
-    let admin_db = client.database("admin");
-    admin_db
-        .run_command(doc! { "ping": 1 })
-        .await
-        .expect("Failed to ping MongoDB");
+    let app: Router = Router::new()
+        .route(
+            "/",
+            get(move || async move { hello_world(app_config.hello_message.clone()).await }),
+        )
+        .route("/tours", get(get_all_tours))
+        .route("/users", get(get_all_users))
+        .fallback(handle_not_found)
+        .with_state(client)
+        .layer(axum_middleware::from_fn(
+            middleware::request_logger_middleware,
+        ));
 
-    println!("✅ Connected to MongoDB successfully");
-    println!("🚀 Starting server on http://{}", addr);
+    async fn handle_not_found(uri: axum::http::Uri) -> AppError {
+        AppError::not_found(format!("Cannot find {} on this server", uri.path()))
+    }
 
-    let app: Router = Router::new().route(
-        "/",
-        get(move || async move { hello_world(app_config.hello_message.clone()).await }),
-    );
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

@@ -84,12 +84,4 @@ impl AppConfig {
     pub fn address(&self) -> String {
         format!("{}:{}", self.host, self.port)
     }
-
-    pub fn resolved_database_url(&self) -> String {
-        if !self.database.is_empty() {
-            self.database.replace("<password>", &self.database_password)
-        } else {
-            self.database_local.clone()
-        }
-    }
 }
