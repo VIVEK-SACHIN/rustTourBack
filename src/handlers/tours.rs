@@ -1,40 +1,51 @@
+//! Tour HTTP handlers — thin wrappers around [`handler_factory`] (Natours `tourController` + factory).
+
+use std::collections::HashMap;
+
 use axum::{
-    extract::State,
+    extract::{Path, Query, State},
+    http::StatusCode,
     Json,
 };
-use serde_json::json;
+use serde_json::Value;
+
+use crate::handlers::handler_factory;
+use crate::models::Tour;
 use crate::state::AppState;
 use crate::utils::error::AppError;
-use crate::models::Tour;
-use futures::TryStreamExt;
 
-/// Fetch all tours from the tours collection
 pub async fn get_all_tours(
-    State(state): State<AppState>,
-) -> Result<Json<serde_json::Value>, AppError> {
-    let db = state.client.database("natours");
-    let tours_collection = db.collection::<Tour>("tours");
-
-    let cursor = tours_collection
-        .find(mongodb::bson::doc! {})
-        .await
-        .map_err(AppError::from)?;
-
-    let tours: Vec<Tour> = cursor
-        .try_collect()
-        .await
-        .map_err(|e| {
-            eprintln!("❌ Database collection error: {}", e);
-            AppError::internal(format!("Failed to collect tours: {}", e))
-        })?;
-
-    println!("✅ Fetched {} tours from database", tours.len());
-
-    Ok(Json(json!({
-        "status": "success",
-        "data": {
-            "tours": tours
-        }
-    })))
+    state: State<AppState>,
+    query: Query<HashMap<String, String>>,
+) -> Result<Json<Value>, AppError> {
+    handler_factory::get_all::<Tour>(state, query, None).await
 }
 
+pub async fn get_tour(
+    state: State<AppState>,
+    id: Path<String>,
+) -> Result<Json<Value>, AppError> {
+    handler_factory::get_one::<Tour>(state, id).await
+}
+
+pub async fn create_tour(
+    state: State<AppState>,
+    body: Json<Tour>,
+) -> Result<(StatusCode, Json<Value>), AppError> {
+    handler_factory::create_one::<Tour>(state, body).await
+}
+
+pub async fn update_tour(
+    state: State<AppState>,
+    id: Path<String>,
+    body: Json<Value>,
+) -> Result<Json<Value>, AppError> {
+    handler_factory::update_one::<Tour>(state, id, body).await
+}
+
+pub async fn delete_tour(
+    state: State<AppState>,
+    id: Path<String>,
+) -> Result<(StatusCode, Json<Value>), AppError> {
+    handler_factory::delete_one::<Tour>(state, id).await
+}

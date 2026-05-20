@@ -24,4 +24,6 @@ pub fn user_routes(state: &AppState) -> Router<AppState> {
         .route("/users/forgot-password", post(forgot_password))
         .route("/users/reset-password/:token", patch(reset_password))
         .merge(protected)
+
+    //yet to Implement routes for user as per node     
 }

@@ -1,7 +1,9 @@
 use chrono::{DateTime, Utc};
-use mongodb::bson::oid::ObjectId;
+use mongodb::bson::{doc, oid::ObjectId, Document};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+
+use crate::models::factory_model::FactoryModel;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -106,4 +108,23 @@ impl User {
 
 pub fn hash_password(plain: &str) -> Result<String, bcrypt::BcryptError> {
     bcrypt::hash(plain, bcrypt::DEFAULT_COST)
+}
+
+impl FactoryModel for User {
+    fn collection_name() -> &'static str {
+        "users"
+    }
+
+    fn list_filter() -> Document {
+        doc! { "active": { "$ne": false } }
+    }
+
+    fn list_projection() -> Option<Document> {
+        Some(doc! {
+            "password": 0,
+            "passwordConfirm": 0,
+            "passwordResetToken": 0,
+            "passwordResetTokenexpires": 0
+        })
+    }
 }

@@ -1,8 +1,11 @@
 use chrono::{DateTime, Utc};
+use mongodb::bson::{doc, oid::ObjectId, Document};
 use serde::{Deserialize, Serialize};
-use mongodb::bson::oid::ObjectId;
+
+use crate::models::factory_model::FactoryModel;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Tour {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
@@ -132,6 +135,22 @@ impl Tour {
     }
 }
 
-fn slugify(name: &str) -> String {
-    name.to_lowercase().replace(" ", "-").replace("_", "-")
+pub(crate) fn slugify(name: &str) -> String {
+    name.to_lowercase().replace(' ', "-").replace('_', "-")
+}
+
+impl FactoryModel for Tour {
+    fn collection_name() -> &'static str {
+        "tours"
+    }
+
+    fn list_filter() -> Document {
+        doc! { "secretTour": { "$ne": true } }
+    }
+
+    fn prepare_create(&mut self) {
+        if self.slug.is_empty() && !self.name.is_empty() {
+            self.slug = slugify(&self.name);
+        }
+    }
 }
