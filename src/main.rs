@@ -6,7 +6,7 @@ mod middleware;
 mod models;
 mod routes;
 
-use axum::{Router, middleware as axum_middleware, routing::get};
+use axum::{Router, middleware as axum_middleware};
 use config::AppConfig;
 use db::mongodb::create_mongo_client;
 use utils::error::AppError;
