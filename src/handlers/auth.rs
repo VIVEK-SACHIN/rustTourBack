@@ -223,7 +223,8 @@ pub async fn forgot_password(
         .map_err(AppError::from)?;
 
     let host = format!("{}:{}", state.config.host, state.config.port);
-    let reset_url = format!("http://{host}/auth/reset-password/{reset_token}");
+    let reset_url =
+        format!("http://{host}/api/v1/users/resetPassword/{reset_token}");
     eprintln!("[auth] password reset link (email not configured): {reset_url}");
 
     Ok(Json(json!({

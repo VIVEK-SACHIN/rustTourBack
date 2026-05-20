@@ -100,7 +100,10 @@ pub async fn create_one<T: FactoryModel>(
 ) -> Result<(StatusCode, Json<Value>), AppError> {
     body.prepare_create();
     let coll = collection::<T>(&state);
-    coll.insert_one(&body).await.map_err(AppError::from)?;
+    let result = coll.insert_one(&body).await.map_err(AppError::from)?;
+    if let Some(id) = result.inserted_id.as_object_id() {
+        body.set_id(id);
+    }
 
     Ok((
         StatusCode::CREATED,

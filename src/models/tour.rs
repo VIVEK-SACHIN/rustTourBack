@@ -153,4 +153,8 @@ impl FactoryModel for Tour {
             self.slug = slugify(&self.name);
         }
     }
+
+    fn set_id(&mut self, id: ObjectId) {
+        self.id = Some(id);
+    }
 }

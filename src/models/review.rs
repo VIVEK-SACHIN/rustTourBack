@@ -33,4 +33,8 @@ impl FactoryModel for Review {
     fn collection_name() -> &'static str {
         "reviews"
     }
+
+    fn set_id(&mut self, id: ObjectId) {
+        self.id = Some(id);
+    }
 }

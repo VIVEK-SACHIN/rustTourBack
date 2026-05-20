@@ -22,6 +22,7 @@ use state::AppState;
 use tower_http::catch_panic::CatchPanicLayer;
 use utils::error::{init_error_reporting, panic_response_json, AppError};
 use routes::{
+    review_routes::review_routes,
     tour_routes::tour_routes,
     user_routes::user_routes,
 };
@@ -64,9 +65,13 @@ async fn main() {
         config: Arc::new(app_config),
     };
 
-    let app: Router = Router::new()
-        .merge(tour_routes())
+    let api_v1 = Router::new()
+        .merge(tour_routes(&app_state))
         .merge(user_routes(&app_state))
+        .merge(review_routes(&app_state));
+
+    let app: Router = Router::new()
+        .nest("/api/v1", api_v1)
         .fallback(handle_not_found)
         .with_state(app_state)
         .layer(axum_middleware::from_fn(

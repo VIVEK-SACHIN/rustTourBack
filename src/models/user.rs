@@ -33,7 +33,7 @@ pub struct User {
     pub active: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum UserRole {
     User,
@@ -126,5 +126,9 @@ impl FactoryModel for User {
             "passwordResetToken": 0,
             "passwordResetTokenexpires": 0
         })
+    }
+
+    fn set_id(&mut self, id: ObjectId) {
+        self.id = Some(id);
     }
 }

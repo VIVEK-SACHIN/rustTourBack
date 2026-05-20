@@ -1,4 +1,4 @@
-use mongodb::bson::{doc, Document};
+use mongodb::bson::{doc, oid::ObjectId, Document};
 use serde::{de::DeserializeOwned, Serialize};
 
 /// Models used by [`crate::handlers::handler_factory`] (Natours `handlerFactory.js`).
@@ -17,4 +17,9 @@ pub trait FactoryModel: Serialize + DeserializeOwned + Send + Sync + Unpin + 'st
 
     /// Called before `createOne` insert (e.g. slug generation).
     fn prepare_create(&mut self) {}
+
+    /// Set `_id` on the in-memory doc after insert (for API response).
+    fn set_id(&mut self, id: ObjectId) {
+        let _ = id;
+    }
 }

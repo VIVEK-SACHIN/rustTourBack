@@ -5,9 +5,10 @@ use std::collections::HashMap;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    Json,
+    Extension, Json,
 };
-use serde_json::Value;
+use mongodb::bson::doc;
+use serde_json::{json, Value};
 
 use crate::handlers::handler_factory;
 use crate::models::user::User;
@@ -41,4 +42,41 @@ pub async fn delete_user(
     id: Path<String>,
 ) -> Result<(StatusCode, Json<Value>), AppError> {
     handler_factory::delete_one::<User>(state, id).await
+}
+
+/// Natours `createUser` — not for public signup.
+pub async fn create_user() -> Result<(StatusCode, Json<Value>), AppError> {
+    Ok((
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(json!({
+            "status": "error",
+            "message": "This route is not defined! Please use /signup instead"
+        })),
+    ))
+}
+
+/// Soft-delete current user (`active: false`).
+pub async fn delete_me(
+    State(state): State<AppState>,
+    Extension(user): Extension<User>,
+) -> Result<(StatusCode, Json<Value>), AppError> {
+    let id = user
+        .id
+        .ok_or_else(|| AppError::internal("User document missing _id."))?;
+
+    let db = state.client.database("natours");
+    let users = db.collection::<User>("users");
+
+    users
+        .update_one(doc! { "_id": id }, doc! { "$set": { "active": false } })
+        .await
+        .map_err(AppError::from)?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        Json(json!({
+            "status": "success",
+            "data": null
+        })),
+    ))
 }
