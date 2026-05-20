@@ -22,7 +22,6 @@ use state::AppState;
 use tower_http::catch_panic::CatchPanicLayer;
 use utils::error::{init_error_reporting, panic_response_json, AppError};
 use routes::{
-    auth_routes::auth_routes,
     tour_routes::tour_routes,
     user_routes::user_routes,
 };
@@ -67,8 +66,7 @@ async fn main() {
 
     let app: Router = Router::new()
         .merge(tour_routes())
-        .merge(user_routes())
-        .merge(auth_routes(&app_state))
+        .merge(user_routes(&app_state))
         .fallback(handle_not_found)
         .with_state(app_state)
         .layer(axum_middleware::from_fn(
