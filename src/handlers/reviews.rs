@@ -1,4 +1,4 @@
-//! Review handlers — factory CRUD + `setUserIdAndTourId` (Natours `reviewController`).
+//! Review handlers — factory CRUD + `setUserIdAndTourId` + rating aggregates.
 
 use std::collections::HashMap;
 
@@ -6,14 +6,16 @@ use axum::{
     extract::{Path, Query, State},
     Extension, Json,
 };
+use axum::extract::State as AxumState;
 use chrono::Utc;
-use mongodb::bson::oid::ObjectId;
+use mongodb::bson::{doc, oid::ObjectId};
 use serde::Deserialize;
 use serde_json::Value;
 
 use crate::handlers::handler_factory;
 use crate::models::review::Review;
 use crate::models::user::User;
+use crate::services::review_ratings::calc_average_ratings;
 use crate::state::AppState;
 use crate::utils::error::AppError;
 
@@ -99,20 +101,44 @@ async fn create_review_impl(
         tour,
     };
 
-    handler_factory::create_one::<Review>(state, Json(review)).await
+    let (status, json) = handler_factory::create_one::<Review>(state.clone(), Json(review)).await?;
+    calc_average_ratings(&state.client, tour).await?;
+    Ok((status, json))
 }
 
 pub async fn update_review(
-    state: State<AppState>,
-    id: Path<String>,
-    body: Json<Value>,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<Value>,
 ) -> Result<Json<Value>, AppError> {
-    handler_factory::update_one::<Review>(state, id, body).await
+    let oid = parse_oid(&id)?;
+    let tour_id = review_tour_id(&state, oid).await?;
+    let client = state.client.clone();
+    let resp =
+        handler_factory::update_one::<Review>(AxumState(state), Path(id), Json(body)).await?;
+    calc_average_ratings(&client, tour_id).await?;
+    Ok(resp)
 }
 
 pub async fn delete_review(
-    state: State<AppState>,
-    id: Path<String>,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
 ) -> Result<(axum::http::StatusCode, Json<Value>), AppError> {
-    handler_factory::delete_one::<Review>(state, id).await
+    let oid = parse_oid(&id)?;
+    let tour_id = review_tour_id(&state, oid).await?;
+    let client = state.client.clone();
+    let resp = handler_factory::delete_one::<Review>(AxumState(state), Path(id)).await?;
+    calc_average_ratings(&client, tour_id).await?;
+    Ok(resp)
+}
+
+async fn review_tour_id(state: &AppState, review_id: ObjectId) -> Result<ObjectId, AppError> {
+    let db = state.client.database("natours");
+    let reviews = db.collection::<Review>("reviews");
+    let review = reviews
+        .find_one(doc! { "_id": review_id })
+        .await
+        .map_err(AppError::from)?
+        .ok_or_else(|| AppError::not_found("No document found with that ID"))?;
+    Ok(review.tour)
 }

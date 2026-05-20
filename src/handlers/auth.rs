@@ -14,6 +14,7 @@ use time::Duration;
 use crate::jwt_util::sign_jwt;
 use crate::models::user::{hash_password, User, UserRole};
 use crate::state::AppState;
+use crate::utils::email::Email;
 use crate::utils::error::AppError;
 
 #[derive(Debug, Deserialize)]
@@ -137,6 +138,18 @@ pub async fn signup(
     let mut user_out = new_user;
     user_out.id = Some(id);
 
+    let welcome_url = if state.config.publish_url.is_empty() {
+        format!("http://{}:{}/api/v1/users/me", state.config.host, state.config.port)
+    } else {
+        format!("{}/me", state.config.publish_url.trim_end_matches('/'))
+    };
+    if let Err(e) = Email::new(&user_out.name, &user_out.email, &welcome_url, &state.config)
+        .send_welcome()
+        .await
+    {
+        eprintln!("Error sending welcome email: {:?}", e);
+    }
+
     let id_hex = id.to_hex();
     let token = sign_jwt(&id_hex, &state.config)?;
     let cookie = jwt_cookie(&token, &state);
@@ -223,14 +236,29 @@ pub async fn forgot_password(
         .map_err(AppError::from)?;
 
     let host = format!("{}:{}", state.config.host, state.config.port);
-    let reset_url =
-        format!("http://{host}/api/v1/users/resetPassword/{reset_token}");
-    eprintln!("[auth] password reset link (email not configured): {reset_url}");
+    let reset_url = format!("http://{host}/api/v1/users/resetPassword/{reset_token}");
 
-    Ok(Json(json!({
-        "status": "success",
-        "message": "Token sent to email!"
-    })))
+    match Email::new(&user.name, &user.email, &reset_url, &state.config)
+        .send_password_reset()
+        .await
+    {
+        Ok(()) => Ok(Json(json!({
+            "status": "success",
+            "message": "Token sent to email!"
+        }))),
+        Err(err) => {
+            user.password_reset_token = None;
+            user.password_reset_token_expires = None;
+            users
+                .replace_one(doc! { "_id": id }, &user)
+                .await
+                .map_err(AppError::from)?;
+            Err(AppError::internal(
+                "There was an error sending the email. Try again later!",
+            )
+            .with_debug_detail(format!("{err:?}")))
+        }
+    }
 }
 
 pub async fn reset_password(
@@ -272,6 +300,7 @@ pub async fn reset_password(
     user.password_confirm = None;
     user.password_reset_token = None;
     user.password_reset_token_expires = None;
+    user.touch_changed_password_at();
 
     let id = user.id.ok_or_else(|| AppError::internal("User missing _id."))?;
     users
@@ -328,6 +357,7 @@ pub async fn update_password(
 
     user.password = Some(hash_password(&body.password).map_err(AppError::from)?);
     user.password_confirm = None;
+    user.touch_changed_password_at();
 
     users
         .replace_one(doc! { "_id": id }, &user)
@@ -346,11 +376,4 @@ pub async fn update_password(
             "data": { "user": json_user(user) }
         })),
     ))
-}
-
-pub async fn me(Extension(user): Extension<User>) -> Json<serde_json::Value> {
-    Json(json!({
-        "status": "success",
-        "data": { "user": json_user(user) }
-    }))
 }

@@ -5,10 +5,11 @@ use axum::{
 };
 
 use crate::handlers::auth::{
-    forgot_password, login, logout, me, reset_password, signup, update_password,
+    forgot_password, login, logout, reset_password, signup, update_password,
 };
 use crate::handlers::users::{
-    create_user, delete_me, delete_user, get_all_users, get_user, update_user,
+    create_user, delete_me, delete_user, get_all_users, get_me, get_user, update_user,
+    update_user_data,
 };
 use crate::middleware::auth::protect;
 use crate::middleware::restrict_to::{restrict_to, RequireRoles};
@@ -29,8 +30,9 @@ pub fn user_routes(state: &AppState) -> Router<AppState> {
         .route("/users/resetPassword/:token", patch(reset_password));
 
     let account = Router::new()
-        .route("/users/me", get(me))
+        .route("/users/me", get(get_me))
         .route("/users/updateMyPassword", patch(update_password))
+        .route("/users/updateUserData", patch(update_user_data))
         .route("/users/deleteMe", delete(delete_me))
         .route_layer(axum_middleware::from_fn_with_state(s.clone(), protect));
 

@@ -68,6 +68,11 @@ impl Default for User {
 }
 
 impl User {
+    /// Natours `pre('save')` — invalidate JWTs issued before password change.
+    pub fn touch_changed_password_at(&mut self) {
+        self.changed_password_at = Some(Utc::now() - chrono::Duration::seconds(2));
+    }
+
     pub fn verify_password(&self, candidate: &str) -> bool {
         if let Some(ref hash) = self.password {
             bcrypt::verify(candidate, hash).unwrap_or(false)
