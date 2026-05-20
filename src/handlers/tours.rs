@@ -4,7 +4,7 @@ use axum::{
 };
 use mongodb::Client;
 use serde_json::json;
-use crate::error::AppError;
+use crate::utils::error::AppError;
 use crate::models::Tour;
 use futures::TryStreamExt;
 

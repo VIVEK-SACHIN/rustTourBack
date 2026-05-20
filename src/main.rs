@@ -1,22 +1,25 @@
 mod config;
 mod db;
-mod error;
+mod utils;
 mod handlers;
 mod middleware;
 mod models;
+mod routes;
 
 use axum::{Router, middleware as axum_middleware, routing::get};
 use config::AppConfig;
 use db::mongodb::create_mongo_client;
-use error::AppError;
-use handlers::{get_all_tours, get_all_users};
-
+use utils::error::AppError;
+use routes::{
+    tour_routes::tour_routes,
+    user_routes::user_routes,
+};
 //is an attribute macro.It helps give better compiler errors for Axum handlers.
 // Without it, Axum errors can be huge and confusing.
-#[axum::debug_handler]
-async fn hello_world(message: String) -> String {
-    message
-}
+// #[axum::debug_handler]
+// async fn hello_world(message: String) -> String {
+//     message
+// }
 
 // this is a procedural macro from the Tokio crate (an asynchronous runtime for Rust).
 //  It serves the following purposes:
@@ -45,12 +48,8 @@ async fn main() {
     };
 
     let app: Router = Router::new()
-        .route(
-            "/",
-            get(move || async move { hello_world(app_config.hello_message.clone()).await }),
-        )
-        .route("/tours", get(get_all_tours))
-        .route("/users", get(get_all_users))
+        .merge(tour_routes())
+        .merge(user_routes())
         .fallback(handle_not_found)
         .with_state(client)
         .layer(axum_middleware::from_fn(

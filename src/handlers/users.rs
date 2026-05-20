@@ -3,7 +3,7 @@ use futures::TryStreamExt;
 use mongodb::Client;
 use serde_json::json;
 
-use crate::error::AppError;
+use crate::utils::error::AppError;
 use crate::models::user::User;
 
 /// Fetch all users from the users collection

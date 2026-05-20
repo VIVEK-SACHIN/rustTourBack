@@ -24,3 +24,20 @@ Rust prefers:
 
 minimal compilation
 explicit enabling
+
+
+3.Think like this:
+JS:
+filesystem = module system
+Rust:
+filesystem helps organize
+BUT compiler uses declared module tree so mod.rs in every folder is required 
+Why Rust designed this way?
+
+Main reasons:
+
+explicitness
+compile-time safety
+faster compilation reasoning
+avoids accidental imports
+clearer visibility rules
