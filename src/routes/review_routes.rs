@@ -47,7 +47,7 @@ pub fn review_routes(state: &AppState) -> Router<AppState> {
     Router::new().merge(read).merge(create).merge(mutate)
 }
 
-/// Nested under `/api/v1/tours/:tourId/reviews`
+/// Nested under `/api/v1/tours/:tourId/review` (Natours singular path).
 pub fn nested_review_routes(state: &AppState) -> Router<AppState> {
     let s = state.clone();
 

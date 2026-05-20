@@ -54,8 +54,17 @@ use routes::{
 //     });
 // }
 // 4.Error handling: It propagates any errors from the async function as the program's exit code.
+fn install_panic_hook() {
+    std::panic::set_hook(Box::new(|info| {
+        eprintln!("UNCAUGHT PANIC! Shutting down...");
+        eprintln!("{info}");
+    }));
+}
+
 #[tokio::main]
 async fn main() {
+    install_panic_hook();
+
     let app_config = AppConfig::from_env();
     init_error_reporting(app_config.is_production());
     let addr = app_config.address();
@@ -98,6 +107,12 @@ async fn main() {
         .with_state(app_state)
         .layer(CompressionLayer::new())
         .layer(RequestBodyLimitLayer::new(10 * 1024))
+        .layer(axum_middleware::from_fn(
+            middleware::mongo_sanitize::mongo_sanitize_middleware,
+        ))
+        .layer(axum_middleware::from_fn(
+            middleware::security_headers::security_headers_middleware,
+        ))
         .layer(cors)
         .layer(axum_middleware::from_fn(
             middleware::request_logger_middleware,
@@ -115,10 +130,41 @@ async fn main() {
     }
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-    axum::serve(
+    println!("App running on {addr}...");
+
+    let server = axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
-    .await
-    .unwrap();
+    .with_graceful_shutdown(shutdown_signal());
+
+    if let Err(err) = server.await {
+        eprintln!("Server error: {err}");
+    } else {
+        println!("Server shut down gracefully.");
+    }
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        if let Err(err) = tokio::signal::ctrl_c().await {
+            eprintln!("Failed to listen for ctrl-c: {err}");
+        }
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        use tokio::signal::unix::{signal, SignalKind};
+        if let Ok(mut sig) = signal(SignalKind::terminate()) {
+            let _ = sig.recv().await;
+        }
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => eprintln!("SIGINT received. Shutting down gracefully..."),
+        _ = terminate => eprintln!("SIGTERM received. Shutting down gracefully..."),
+    }
 }

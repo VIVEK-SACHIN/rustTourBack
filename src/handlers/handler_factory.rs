@@ -65,7 +65,7 @@ pub async fn get_all<T: FactoryModel>(
     })))
 }
 
-/// `getOne` — `populate` is not implemented yet (Mongoose virtual populate for reviews).
+/// `getOne` — generic handler; reviews/tours use dedicated handlers for populate.
 pub async fn get_one<T: FactoryModel>(
     State(state): State<AppState>,
     Path(id): Path<String>,

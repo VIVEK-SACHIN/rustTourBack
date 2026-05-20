@@ -14,9 +14,11 @@ use serde_json::{json, Value};
 use crate::handlers::handler_factory;
 use crate::models::review::Review;
 use crate::models::user::User;
+use crate::models::tour::slugify;
 use crate::models::Tour;
 use crate::state::AppState;
 use crate::utils::error::AppError;
+use crate::utils::validate::{validate_tour_create, validate_tour_update};
 
 fn parse_oid(id: &str) -> Result<ObjectId, AppError> {
     ObjectId::parse_str(id).map_err(|e| AppError::bad_request(format!("Invalid id: {e}")))
@@ -228,7 +230,7 @@ pub async fn get_tours_within(
     Ok(Json(json!({
         "status": "success",
         "results": list.len(),
-        "data": { "docs": list }
+        "data": { "tours": list }
     })))
 }
 
@@ -295,15 +297,22 @@ pub async fn create_tour(
     state: State<AppState>,
     body: Json<Tour>,
 ) -> Result<(StatusCode, Json<Value>), AppError> {
+    validate_tour_create(&body)?;
     handler_factory::create_one::<Tour>(state, body).await
 }
 
 pub async fn update_tour(
     state: State<AppState>,
     id: Path<String>,
-    body: Json<Value>,
+    Json(mut body): Json<Value>,
 ) -> Result<Json<Value>, AppError> {
-    handler_factory::update_one::<Tour>(state, id, body).await
+    validate_tour_update(&body)?;
+    if let Some(name) = body.get("name").and_then(|v| v.as_str()).map(str::to_string) {
+        if let Some(obj) = body.as_object_mut() {
+            obj.insert("slug".to_string(), json!(slugify(&name)));
+        }
+    }
+    handler_factory::update_one::<Tour>(state, id, Json(body)).await
 }
 
 pub async fn delete_tour(

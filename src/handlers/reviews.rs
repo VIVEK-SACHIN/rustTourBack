@@ -1,4 +1,4 @@
-//! Review handlers — factory CRUD + `setUserIdAndTourId` + rating aggregates.
+//! Review handlers — factory CRUD + `setUserIdAndTourId` + rating aggregates + user populate.
 
 use std::collections::HashMap;
 
@@ -14,10 +14,12 @@ use serde_json::Value;
 
 use crate::handlers::handler_factory;
 use crate::models::review::Review;
-use crate::models::user::User;
+use crate::models::user::{User, UserRole};
+use crate::services::review_populate::{get_review_populated, list_reviews_populated};
 use crate::services::review_ratings::calc_average_ratings;
 use crate::state::AppState;
 use crate::utils::error::AppError;
+use crate::utils::validate::{validate_review_rating, validate_review_text};
 
 #[derive(Debug, Deserialize)]
 pub struct CreateReviewBody {
@@ -35,7 +37,8 @@ pub async fn get_all_reviews(
     state: State<AppState>,
     query: Query<HashMap<String, String>>,
 ) -> Result<Json<Value>, AppError> {
-    handler_factory::get_all::<Review>(state, query, None).await
+    let json = list_reviews_populated(&state, &query, None).await?;
+    Ok(Json(json))
 }
 
 pub async fn get_all_reviews_on_tour(
@@ -43,14 +46,16 @@ pub async fn get_all_reviews_on_tour(
     Path(tour_id): Path<String>,
     query: Query<HashMap<String, String>>,
 ) -> Result<Json<Value>, AppError> {
-    handler_factory::get_all::<Review>(state, query, Some(tour_id)).await
+    let json = list_reviews_populated(&state, &query, Some(&tour_id)).await?;
+    Ok(Json(json))
 }
 
 pub async fn get_review(
     state: State<AppState>,
     id: Path<String>,
 ) -> Result<Json<Value>, AppError> {
-    handler_factory::get_one::<Review>(state, id).await
+    let json = get_review_populated(&state, &id).await?;
+    Ok(Json(json))
 }
 
 pub async fn create_review(
@@ -88,6 +93,9 @@ async fn create_review_impl(
     rating: u8,
     tour: ObjectId,
 ) -> Result<(axum::http::StatusCode, Json<Value>), AppError> {
+    validate_review_text(&review_text)?;
+    validate_review_rating(rating)?;
+
     let user_id = user
         .id
         .ok_or_else(|| AppError::internal("User document missing _id."))?;
@@ -95,7 +103,7 @@ async fn create_review_impl(
     let review = Review {
         id: None,
         review: review_text,
-        rating: rating.clamp(1, 5),
+        rating,
         created_at: Utc::now(),
         user: user_id,
         tour,
@@ -109,10 +117,21 @@ async fn create_review_impl(
 pub async fn update_review(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    Extension(user): Extension<User>,
     Json(body): Json<Value>,
 ) -> Result<Json<Value>, AppError> {
+    if let Some(text) = body.get("review").and_then(|v| v.as_str()) {
+        validate_review_text(text)?;
+    }
+    if let Some(r) = body.get("rating").and_then(|v| v.as_u64()) {
+        validate_review_rating(r as u8)?;
+    }
+
     let oid = parse_oid(&id)?;
-    let tour_id = review_tour_id(&state, oid).await?;
+    let existing = load_review(&state, oid).await?;
+    assert_review_owner(&user, &existing)?;
+
+    let tour_id = existing.tour;
     let client = state.client.clone();
     let resp =
         handler_factory::update_one::<Review>(AxumState(state), Path(id), Json(body)).await?;
@@ -123,22 +142,40 @@ pub async fn update_review(
 pub async fn delete_review(
     State(state): State<AppState>,
     Path(id): Path<String>,
+    Extension(user): Extension<User>,
 ) -> Result<(axum::http::StatusCode, Json<Value>), AppError> {
     let oid = parse_oid(&id)?;
-    let tour_id = review_tour_id(&state, oid).await?;
+    let existing = load_review(&state, oid).await?;
+    assert_review_owner(&user, &existing)?;
+
+    let tour_id = existing.tour;
     let client = state.client.clone();
     let resp = handler_factory::delete_one::<Review>(AxumState(state), Path(id)).await?;
     calc_average_ratings(&client, tour_id).await?;
     Ok(resp)
 }
 
-async fn review_tour_id(state: &AppState, review_id: ObjectId) -> Result<ObjectId, AppError> {
+async fn load_review(state: &AppState, review_id: ObjectId) -> Result<Review, AppError> {
     let db = state.client.database("natours");
     let reviews = db.collection::<Review>("reviews");
-    let review = reviews
+    reviews
         .find_one(doc! { "_id": review_id })
         .await
         .map_err(AppError::from)?
-        .ok_or_else(|| AppError::not_found("No document found with that ID"))?;
-    Ok(review.tour)
+        .ok_or_else(|| AppError::not_found("No document found with that ID"))
+}
+
+fn assert_review_owner(user: &User, review: &Review) -> Result<(), AppError> {
+    if user.role == UserRole::Admin {
+        return Ok(());
+    }
+    let user_id = user
+        .id
+        .ok_or_else(|| AppError::internal("User document missing _id."))?;
+    if user.role == UserRole::User && review.user == user_id {
+        return Ok(());
+    }
+    Err(AppError::forbidden(
+        "You do not have permission to perform this action on this review.",
+    ))
 }

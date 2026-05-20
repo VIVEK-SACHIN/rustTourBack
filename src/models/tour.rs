@@ -135,7 +135,7 @@ impl Tour {
     }
 }
 
-pub(crate) fn slugify(name: &str) -> String {
+pub fn slugify(name: &str) -> String {
     name.to_lowercase().replace(' ', "-").replace('_', "-")
 }
 

@@ -30,7 +30,7 @@ pub fn tour_routes(state: &AppState) -> Router<AppState> {
         )
         .route("/tours/distances/:latlng/unit/:unit", get(get_distances))
         .route("/tours", get(get_all_tours))
-        .nest("/tours/:tourId/reviews", nested_review_routes(state));
+        .nest("/tours/:tourId/review", nested_review_routes(state));
 
     let monthly = Router::new()
         .route("/tours/monthly-plan/:year", get(get_monthly_plan))

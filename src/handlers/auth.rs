@@ -16,6 +16,7 @@ use crate::models::user::{hash_password, User, UserRole};
 use crate::state::AppState;
 use crate::utils::email::Email;
 use crate::utils::error::AppError;
+use crate::utils::validate::{validate_email, validate_password};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -89,11 +90,8 @@ pub async fn signup(
     jar: CookieJar,
     Json(body): Json<SignupBody>,
 ) -> Result<impl IntoResponse, AppError> {
-    if body.password.len() < 8 {
-        return Err(AppError::bad_request(
-            "Password must be at least 8 characters.",
-        ));
-    }
+    validate_email(&body.email)?;
+    validate_password(&body.password)?;
     if body.password != body.password_confirm {
         return Err(AppError::bad_request("Passwords are not the same!"));
     }
@@ -114,7 +112,9 @@ pub async fn signup(
 
     let hash = hash_password(&body.password).map_err(AppError::from)?;
 
-    let role = body.role.unwrap_or_default();
+    // Natours signup should not allow self-assigning admin; always create a `user`.
+    let _ = body.role;
+    let role = UserRole::User;
 
     let new_user = User {
         id: None,
@@ -171,8 +171,9 @@ pub async fn login(
     jar: CookieJar,
     Json(body): Json<LoginBody>,
 ) -> Result<impl IntoResponse, AppError> {
+    validate_email(&body.email)?;
     let email = body.email.trim().to_lowercase();
-    if email.is_empty() || body.password.is_empty() {
+    if body.password.is_empty() {
         return Err(AppError::bad_request("please provide email and password"));
     }
 
@@ -267,11 +268,7 @@ pub async fn reset_password(
     Path(token): Path<String>,
     Json(body): Json<ResetPasswordBody>,
 ) -> Result<impl IntoResponse, AppError> {
-    if body.new_password.len() < 8 {
-        return Err(AppError::bad_request(
-            "Password must be at least 8 characters.",
-        ));
-    }
+    validate_password(&body.new_password)?;
     if body.new_password != body.password_confirm {
         return Err(AppError::bad_request("Passwords are not the same!"));
     }
@@ -329,11 +326,7 @@ pub async fn update_password(
     Extension(ctx): Extension<User>,
     Json(body): Json<UpdatePasswordBody>,
 ) -> Result<impl IntoResponse, AppError> {
-    if body.password.len() < 8 {
-        return Err(AppError::bad_request(
-            "Password must be at least 8 characters.",
-        ));
-    }
+    validate_password(&body.password)?;
     if body.password != body.password_confirm {
         return Err(AppError::bad_request("Passwords are not the same!"));
     }
