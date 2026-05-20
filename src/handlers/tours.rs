@@ -2,17 +2,17 @@ use axum::{
     extract::State,
     Json,
 };
-use mongodb::Client;
 use serde_json::json;
+use crate::state::AppState;
 use crate::utils::error::AppError;
 use crate::models::Tour;
 use futures::TryStreamExt;
 
 /// Fetch all tours from the tours collection
 pub async fn get_all_tours(
-    State(client): State<Client>,
+    State(state): State<AppState>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let db = client.database("natours");
+    let db = state.client.database("natours");
     let tours_collection = db.collection::<Tour>("tours");
 
     let cursor = tours_collection

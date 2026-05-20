@@ -1,8 +1,13 @@
 use chrono::{DateTime, Utc};
+use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct User {
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<ObjectId>,
     pub name: String,
     pub email: String,
     pub photo: String,
@@ -11,12 +16,18 @@ pub struct User {
     pub password: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub password_confirm: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        with = "crate::models::bson_chrono::optional"
+    )]
     pub changed_password_at: Option<DateTime<Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub password_reset_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Mongoose field name typo: `passwordResetTokenexpires`
+    #[serde(rename = "passwordResetTokenexpires", skip_serializing_if = "Option::is_none")]
     pub password_reset_token_expires: Option<i64>,
+    #[serde(default)]
     pub active: bool,
 }
 
@@ -39,6 +50,7 @@ impl Default for UserRole {
 impl Default for User {
     fn default() -> Self {
         Self {
+            id: None,
             name: String::new(),
             email: String::new(),
             photo: "default.jpg".to_string(),
@@ -54,38 +66,44 @@ impl Default for User {
 }
 
 impl User {
-    pub fn new(name: String, email: String, password: String) -> Self {
-        Self {
-            name,
-            email,
-            password: Some(password),
-            ..Default::default()
-        }
-    }
-
-    // Placeholder for password verification - would need bcrypt crate
-    pub fn verify_password(&self, _candidate: &str) -> bool {
-        // TODO: Implement bcrypt verification
-        false
-    }
-
-    // Placeholder for password change check
-    pub fn changed_password_after(&self, _jwt_timestamp: i64) -> bool {
-        if let Some(changed_at) = self.changed_password_at {
-            let changed_timestamp = changed_at.timestamp();
-            _jwt_timestamp < changed_timestamp
+    pub fn verify_password(&self, candidate: &str) -> bool {
+        if let Some(ref hash) = self.password {
+            bcrypt::verify(candidate, hash).unwrap_or(false)
         } else {
             false
         }
     }
 
-    // Placeholder for password reset token creation
+    /// `jwt_iat_seconds` from JWT `iat` claim (seconds).
+    pub fn changed_password_after(&self, jwt_iat_seconds: i64) -> bool {
+        if let Some(changed_at) = self.changed_password_at {
+            let changed_ts = changed_at.timestamp();
+            jwt_iat_seconds < changed_ts
+        } else {
+            false
+        }
+    }
+
+    /// Mirrors `userSchema.methods.createPasswordResetToken` (plain token returned; hash stored).
     pub fn create_password_reset_token(&mut self) -> String {
-        // TODO: Implement crypto random token generation
-        let reset_token = "placeholder_reset_token".to_string();
-        // Hash the token and store it
-        self.password_reset_token = Some("hashed_token".to_string());
-        self.password_reset_token_expires = Some(Utc::now().timestamp() + 10 * 60); // 10 minutes
+        let bytes: [u8; 32] = rand::random();
+        let reset_token = hex::encode(bytes);
+        let hash = Sha256::digest(reset_token.as_bytes());
+        self.password_reset_token = Some(hex::encode(hash));
+        self.password_reset_token_expires =
+            Some(Utc::now().timestamp_millis() + 10 * 60 * 1000);
         reset_token
     }
+
+    pub fn strip_secrets_for_response(mut self) -> Self {
+        self.password = None;
+        self.password_confirm = None;
+        self.password_reset_token = None;
+        self.password_reset_token_expires = None;
+        self
+    }
+}
+
+pub fn hash_password(plain: &str) -> Result<String, bcrypt::BcryptError> {
+    bcrypt::hash(plain, bcrypt::DEFAULT_COST)
 }

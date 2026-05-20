@@ -84,4 +84,12 @@ impl AppConfig {
     pub fn address(&self) -> String {
         format!("{}:{}", self.host, self.port)
     }
+
+    /// Matches Express `NODE_ENV === 'production'` and `APP_ENV === 'production'`.
+    pub fn is_production(&self) -> bool {
+        self.app_env.eq_ignore_ascii_case("production")
+            || std::env::var("NODE_ENV")
+                .map(|v| v.eq_ignore_ascii_case("production"))
+                .unwrap_or(false)
+    }
 }

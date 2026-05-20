@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct Review {
     pub review: String,
     pub rating: u8,
+    #[serde(rename = "CreatedAt", with = "crate::models::bson_chrono::required")]
     pub created_at: DateTime<Utc>,
     pub user: String, // ObjectId as string
     pub tour: String, // ObjectId as string

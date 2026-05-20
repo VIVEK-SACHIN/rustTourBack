@@ -1,16 +1,28 @@
 mod config;
 mod db;
+mod jwt_util;
+mod state;
 mod utils;
 mod handlers;
 mod middleware;
 mod models;
 mod routes;
 
-use axum::{Router, middleware as axum_middleware};
+use std::sync::Arc;
+
+use axum::{
+    http::StatusCode,
+    middleware as axum_middleware,
+    response::IntoResponse,
+    Router,
+};
 use config::AppConfig;
 use db::mongodb::create_mongo_client;
-use utils::error::AppError;
+use state::AppState;
+use tower_http::catch_panic::CatchPanicLayer;
+use utils::error::{init_error_reporting, panic_response_json, AppError};
 use routes::{
+    auth_routes::auth_routes,
     tour_routes::tour_routes,
     user_routes::user_routes,
 };
@@ -38,6 +50,7 @@ use routes::{
 #[tokio::main]
 async fn main() {
     let app_config = AppConfig::from_env();
+    init_error_reporting(app_config.is_production());
     let addr = app_config.address();
 
     let client = match create_mongo_client(&app_config).await {
@@ -47,14 +60,27 @@ async fn main() {
         }
     };
 
+    let app_state = AppState {
+        client,
+        config: Arc::new(app_config),
+    };
+
     let app: Router = Router::new()
         .merge(tour_routes())
         .merge(user_routes())
+        .merge(auth_routes(&app_state))
         .fallback(handle_not_found)
-        .with_state(client)
+        .with_state(app_state)
         .layer(axum_middleware::from_fn(
             middleware::request_logger_middleware,
-        ));
+        ))
+        .layer(CatchPanicLayer::custom(|_: Box<dyn std::any::Any + Send>| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                panic_response_json(),
+            )
+                .into_response()
+        }));
 
     async fn handle_not_found(uri: axum::http::Uri) -> AppError {
         AppError::not_found(format!("Cannot find {} on this server", uri.path()))

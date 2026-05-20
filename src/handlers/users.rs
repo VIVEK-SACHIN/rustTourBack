@@ -1,20 +1,27 @@
 use axum::{extract::State, Json};
 use futures::TryStreamExt;
-use mongodb::Client;
+use mongodb::bson::doc;
 use serde_json::json;
 
+use crate::state::AppState;
 use crate::utils::error::AppError;
 use crate::models::user::User;
 
 /// Fetch all users from the users collection
 pub async fn get_all_users(
-    State(client): State<Client>,
+    State(state): State<AppState>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let db = client.database("natours");
+    let db = state.client.database("natours");
     let users_collection = db.collection::<User>("users");
 
     let cursor = users_collection
-        .find(mongodb::bson::doc! {})
+        .find(doc! {})
+        .projection(doc! {
+            "password": 0,
+            "passwordConfirm": 0,
+            "passwordResetToken": 0,
+            "passwordResetTokenexpires": 0
+        })
         .await
         .map_err(AppError::from)?;
 

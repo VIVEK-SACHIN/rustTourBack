@@ -33,9 +33,13 @@ pub struct Tour {
     pub image_cover: String,
     #[serde(default)]
     pub images: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        with = "crate::models::bson_chrono::optional"
+    )]
     pub created_at: Option<DateTime<Utc>>,
-    #[serde(default)]
+    #[serde(default, with = "crate::models::bson_chrono::vec")]
     pub start_dates: Vec<DateTime<Utc>>,
     #[serde(default)]
     pub secret_tour: bool,
