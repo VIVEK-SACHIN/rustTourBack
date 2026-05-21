@@ -25,3 +25,4 @@ rand = "0.8"
 hex = "0.4"
 time = { version = "0.3", features = ["macros"] }
 regex = "1"
+percent-encoding = "2"

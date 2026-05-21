@@ -3,3 +3,4 @@ pub mod email;
 pub mod error;
 pub mod sanitize;
 pub mod validate;
+pub mod xss;

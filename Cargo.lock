@@ -2026,6 +2026,7 @@ dependencies = [
  "jsonwebtoken",
  "lettre",
  "mongodb",
+ "percent-encoding",
  "rand 0.8.6",
  "regex",
  "serde",

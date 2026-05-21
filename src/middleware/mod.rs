@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod hpp;
 pub mod mongo_sanitize;
 pub mod rate_limit;
 pub mod request_logger;

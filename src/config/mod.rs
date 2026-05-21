@@ -22,6 +22,8 @@ pub struct AppConfig {
     pub email_port: u16,
     pub email_from: String,
     pub email_from_name: String,
+    /// SendGrid API key when `APP_ENV=production` (Natours `SENDGRID_API_KEY`).
+    pub sendgrid_api_key: String,
     pub publish_url: String,
     pub mapbox_token: String,
 }
@@ -65,6 +67,7 @@ impl AppConfig {
             env::var("EMAIL_FROM").unwrap_or_else(|_| "noreply@natours.dev".to_string());
         let email_from_name =
             env::var("EMAIL_FROM_NAME").unwrap_or_else(|_| "Natours".to_string());
+        let sendgrid_api_key = env::var("SENDGRID_API_KEY").unwrap_or_default();
         let publish_url = env::var("PUBLISH_URL").unwrap_or_default();
         let mapbox_token = env::var("MAPBOX_TOKEN")
             .or_else(|_| env::var("MAPBOX_ACCESS_TOKEN"))
@@ -89,6 +92,7 @@ impl AppConfig {
             email_port,
             email_from,
             email_from_name,
+            sendgrid_api_key,
             publish_url,
             mapbox_token,
         }

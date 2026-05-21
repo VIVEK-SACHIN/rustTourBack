@@ -100,7 +100,10 @@ pub async fn get_review_populated(state: &AppState, id: &str) -> Result<Value, A
     }))
 }
 
-async fn populate_review_docs(state: &AppState, reviews: Vec<Review>) -> Result<Vec<Value>, AppError> {
+pub async fn populate_review_docs(
+    state: &AppState,
+    reviews: Vec<Review>,
+) -> Result<Vec<Value>, AppError> {
     if reviews.is_empty() {
         return Ok(vec![]);
     }

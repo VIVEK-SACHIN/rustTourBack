@@ -58,6 +58,12 @@ fn build_filter(query: &HashMap<String, String>, mut filter: Document) -> Docume
             if let Bson::Document(d) = sub {
                 d.insert(op_key, parsed);
             }
+        } else if value.contains(',') {
+            let values: Vec<Bson> = value
+                .split(',')
+                .map(|s| parse_filter_value(s.trim()))
+                .collect();
+            filter.insert(key.clone(), doc! { "$in": values });
         } else {
             filter.insert(key.clone(), parse_filter_value(value));
         }

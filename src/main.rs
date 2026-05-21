@@ -110,6 +110,7 @@ async fn main() {
         .layer(axum_middleware::from_fn(
             middleware::mongo_sanitize::mongo_sanitize_middleware,
         ))
+        .layer(axum_middleware::from_fn(middleware::hpp::hpp_middleware))
         .layer(axum_middleware::from_fn(
             middleware::security_headers::security_headers_middleware,
         ))

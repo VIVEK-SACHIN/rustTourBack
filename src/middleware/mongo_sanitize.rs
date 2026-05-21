@@ -10,6 +10,7 @@ use serde_json::Value;
 
 use crate::utils::error::AppError;
 use crate::utils::sanitize::{reject_mongo_operators_in_query, sanitize_json};
+use crate::utils::xss::sanitize_xss_json;
 
 const MAX_BODY: usize = 10 * 1024;
 
@@ -44,6 +45,7 @@ pub async fn mongo_sanitize_middleware(mut request: Request<Body>, next: Next) -
             match serde_json::from_slice::<Value>(&bytes) {
                 Ok(mut value) => {
                     sanitize_json(&mut value);
+                    sanitize_xss_json(&mut value);
                     match serde_json::to_vec(&value) {
                         Ok(vec) => {
                             *request.body_mut() = Body::from(vec);

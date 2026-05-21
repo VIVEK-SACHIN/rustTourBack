@@ -13,9 +13,10 @@ use serde_json::{json, Value};
 
 use crate::handlers::handler_factory;
 use crate::models::review::Review;
-use crate::models::user::User;
 use crate::models::tour::slugify;
 use crate::models::Tour;
+use crate::services::review_populate::populate_review_docs;
+use crate::services::tour_populate::{list_tours_with_guides, populate_guides_on_tours};
 use crate::state::AppState;
 use crate::utils::error::AppError;
 use crate::utils::validate::{validate_tour_create, validate_tour_update};
@@ -28,7 +29,8 @@ pub async fn get_all_tours(
     state: State<AppState>,
     query: Query<HashMap<String, String>>,
 ) -> Result<Json<Value>, AppError> {
-    handler_factory::get_all::<Tour>(state, query, None).await
+    let json = list_tours_with_guides(&state, &query).await?;
+    Ok(Json(json))
 }
 
 /// `aliasTopTours` + `getAllTours`
@@ -40,7 +42,8 @@ pub async fn get_top_5_cheap(state: State<AppState>) -> Result<Json<Value>, AppE
         "fields".into(),
         "name,price,ratingsAverage,summary,difficulty".into(),
     );
-    handler_factory::get_all::<Tour>(state, Query(query), None).await
+    let json = list_tours_with_guides(&state, &query).await?;
+    Ok(Json(json))
 }
 
 /// `getTour` with reviews + guides populated.
@@ -67,28 +70,13 @@ pub async fn get_tour(
         .await
         .map_err(AppError::from)?;
 
-    let mut guides: Vec<User> = Vec::new();
-    if !tour.guides.is_empty() {
-        let users = db.collection::<User>("users");
-        guides = users
-            .find(doc! { "_id": { "$in": &tour.guides }, "active": { "$ne": false } })
-            .projection(doc! {
-                "password": 0,
-                "passwordConfirm": 0,
-                "passwordResetToken": 0,
-                "passwordResetTokenexpires": 0
-            })
-            .await
-            .map_err(AppError::from)?
-            .try_collect()
-            .await
-            .map_err(AppError::from)?;
-    }
-
-    let mut doc = serde_json::to_value(&tour).map_err(|e| AppError::internal(e.to_string()))?;
+    let review_docs = populate_review_docs(&state, reviews).await?;
+    let mut tour_docs = populate_guides_on_tours(&state, vec![tour]).await?;
+    let mut doc = tour_docs
+        .pop()
+        .ok_or_else(|| AppError::internal("Tour missing after populate."))?;
     if let Some(obj) = doc.as_object_mut() {
-        obj.insert("reviews".to_string(), serde_json::to_value(&reviews).unwrap());
-        obj.insert("guides".to_string(), serde_json::to_value(&guides).unwrap());
+        obj.insert("reviews".to_string(), Value::Array(review_docs));
     }
 
     Ok(Json(json!({
