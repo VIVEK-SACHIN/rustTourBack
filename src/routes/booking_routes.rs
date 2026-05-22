@@ -6,7 +6,7 @@ use axum::{
 
 use crate::handlers::bookings::{
     create_booking, delete_booking, get_all_bookings, get_booking, get_checkout_session,
-    update_booking,
+    get_my_bookings, update_booking,
 };
 use crate::middleware::auth::protect;
 use crate::middleware::restrict_to::{restrict_to, RequireRoles};
@@ -26,6 +26,10 @@ pub fn booking_routes(state: &AppState) -> Router<AppState> {
         )
         .route_layer(axum_middleware::from_fn_with_state(s.clone(), protect));
 
+    let my_bookings = Router::new()
+        .route("/bookings/my", get(get_my_bookings))
+        .route_layer(axum_middleware::from_fn_with_state(s.clone(), protect));
+
     let admin = Router::new()
         .route("/bookings", get(get_all_bookings::<Booking>).post(create_booking::<Booking>))
         .route(
@@ -40,5 +44,8 @@ pub fn booking_routes(state: &AppState) -> Router<AppState> {
         ))
         .route_layer(axum_middleware::from_fn_with_state(s, protect));
 
-    Router::new().merge(checkout).merge(admin)
+    Router::new()
+        .merge(checkout)
+        .merge(my_bookings)
+        .merge(admin)
 }

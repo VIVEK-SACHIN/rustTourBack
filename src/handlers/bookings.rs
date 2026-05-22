@@ -6,6 +6,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     Extension, Json,
 };
+use futures::TryStreamExt;
 use mongodb::bson::{doc, oid::ObjectId};
 use serde_json::{json, Value};
 
@@ -42,6 +43,56 @@ pub async fn get_checkout_session(
     Ok(Json(json!({
         "status": "success",
         "session": session
+    })))
+}
+
+/// `GET /api/v1/bookings/my` (protected) — current user's bookings with tour details.
+pub async fn get_my_bookings(
+    State(state): State<AppState>,
+    Extension(user): Extension<User>,
+) -> Result<Json<Value>, AppError> {
+    let user_id = user
+        .id
+        .ok_or_else(|| AppError::internal("User missing _id"))?;
+
+    let db = state.client.database("natours");
+    let bookings_coll = db.collection::<Booking>("bookings");
+    let tours_coll = db.collection::<Tour>("tours");
+
+    let cursor = bookings_coll
+        .find(doc! { "user": user_id })
+        .await
+        .map_err(AppError::from)?;
+
+    let bookings: Vec<Booking> = cursor.try_collect().await.map_err(AppError::from)?;
+
+    let mut docs = Vec::with_capacity(bookings.len());
+    for booking in bookings {
+        let Some(booking_id) = booking.id else {
+            continue;
+        };
+
+        let Some(tour) = tours_coll
+            .find_one(doc! { "_id": booking.tour })
+            .await
+            .map_err(AppError::from)?
+        else {
+            continue;
+        };
+
+        docs.push(json!({
+            "_id": booking_id,
+            "price": booking.price,
+            "paid": booking.paid,
+            "createdAt": booking.created_at,
+            "tour": tour,
+        }));
+    }
+
+    Ok(Json(json!({
+        "status": "success",
+        "results": docs.len(),
+        "data": { "docs": docs }
     })))
 }
 
