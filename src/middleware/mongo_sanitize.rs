@@ -14,7 +14,16 @@ use crate::utils::xss::sanitize_xss_json;
 
 const MAX_BODY: usize = 10 * 1024;
 
+/// Stripe signs the raw webhook body; parsing/re-serializing JSON breaks verification.
+fn is_stripe_webhook(request: &Request<Body>) -> bool {
+    request.method() == Method::POST && request.uri().path() == "/webhook-checkout"
+}
+
 pub async fn mongo_sanitize_middleware(mut request: Request<Body>, next: Next) -> Response {
+    if is_stripe_webhook(&request) {
+        return next.run(request).await;
+    }
+
     if let Some(query) = request.uri().query() {
         if reject_mongo_operators_in_query(query).is_err() {
             return AppError::bad_request("Query string contains forbidden characters.")
