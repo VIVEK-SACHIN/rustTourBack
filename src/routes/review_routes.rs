@@ -6,7 +6,7 @@ use axum::{
 
 use crate::handlers::reviews::{
     create_review, create_review_on_tour, delete_review, get_all_reviews,
-    get_all_reviews_on_tour, get_review, update_review,
+    get_all_reviews_on_tour, get_my_reviews, get_review, update_review,
 };
 use crate::middleware::auth::protect;
 use crate::middleware::restrict_to::{restrict_to, RequireRoles};
@@ -19,6 +19,10 @@ const USER_OR_ADMIN: &[UserRole] = &[UserRole::User, UserRole::Admin];
 /// `GET|POST /api/v1/reviews` and `GET|PATCH|DELETE /api/v1/reviews/:id`
 pub fn review_routes(state: &AppState) -> Router<AppState> {
     let s = state.clone();
+
+    let my_reviews = Router::new()
+        .route("/reviews/my", get(get_my_reviews))
+        .route_layer(axum_middleware::from_fn_with_state(s.clone(), protect));
 
     let read = Router::new()
         .route("/reviews", get(get_all_reviews))
@@ -44,7 +48,11 @@ pub fn review_routes(state: &AppState) -> Router<AppState> {
         ))
         .route_layer(axum_middleware::from_fn_with_state(s, protect));
 
-    Router::new().merge(read).merge(create).merge(mutate)
+    Router::new()
+        .merge(my_reviews)
+        .merge(read)
+        .merge(create)
+        .merge(mutate)
 }
 
 /// Nested under `/api/v1/tours/:tourId/review` (Natours singular path).

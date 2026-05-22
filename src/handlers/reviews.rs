@@ -8,12 +8,14 @@ use axum::{
 };
 use axum::extract::State as AxumState;
 use chrono::Utc;
+use futures::TryStreamExt;
 use mongodb::bson::{doc, oid::ObjectId};
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use crate::handlers::handler_factory;
 use crate::models::review::Review;
+use crate::models::Tour;
 use crate::models::user::{User, UserRole};
 use crate::services::review_populate::{get_review_populated, list_reviews_populated};
 use crate::services::review_ratings::calc_average_ratings;
@@ -39,6 +41,61 @@ pub async fn get_all_reviews(
 ) -> Result<Json<Value>, AppError> {
     let json = list_reviews_populated(&state, &query, None).await?;
     Ok(Json(json))
+}
+
+/// `GET /api/v1/reviews/my` (protected) — current user's reviews with tour summary.
+pub async fn get_my_reviews(
+    State(state): State<AppState>,
+    Extension(user): Extension<User>,
+) -> Result<Json<Value>, AppError> {
+    let user_id = user
+        .id
+        .ok_or_else(|| AppError::internal("User missing _id"))?;
+
+    let db = state.client.database("natours");
+    let reviews_coll = db.collection::<Review>("reviews");
+    let tours_coll = db.collection::<Tour>("tours");
+
+    let cursor = reviews_coll
+        .find(doc! { "user": user_id })
+        .await
+        .map_err(AppError::from)?;
+
+    let reviews: Vec<Review> = cursor.try_collect().await.map_err(AppError::from)?;
+
+    let mut docs = Vec::with_capacity(reviews.len());
+    for review in reviews {
+        let Some(review_id) = review.id else {
+            continue;
+        };
+
+        let Some(tour) = tours_coll
+            .find_one(doc! { "_id": review.tour })
+            .await
+            .map_err(AppError::from)?
+        else {
+            continue;
+        };
+
+        docs.push(json!({
+            "_id": review_id,
+            "review": review.review,
+            "rating": review.rating,
+            "createdAt": review.created_at,
+            "tour": {
+                "_id": tour.id,
+                "name": tour.name,
+                "slug": tour.slug,
+                "imageCover": tour.image_cover,
+            }
+        }));
+    }
+
+    Ok(Json(json!({
+        "status": "success",
+        "results": docs.len(),
+        "data": { "docs": docs }
+    })))
 }
 
 pub async fn get_all_reviews_on_tour(
