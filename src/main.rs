@@ -16,6 +16,7 @@ use axum::{
     http::{header, HeaderValue, Method, StatusCode},
     middleware as axum_middleware,
     response::IntoResponse,
+    routing::post,
     Router,
 };
 use tower_http::{
@@ -28,7 +29,9 @@ use db::mongodb::create_mongo_client;
 use state::AppState;
 use tower_http::catch_panic::CatchPanicLayer;
 use utils::error::{init_error_reporting, panic_response_json, AppError};
+use handlers::bookings::webhook_checkout;
 use routes::{
+    booking_routes::booking_routes,
     review_routes::review_routes,
     tour_routes::tour_routes,
     user_routes::user_routes,
@@ -85,13 +88,23 @@ async fn main() {
         .merge(tour_routes(&app_state))
         .merge(user_routes(&app_state))
         .merge(review_routes(&app_state))
+        .merge(booking_routes(&app_state))
         .route_layer(axum_middleware::from_fn_with_state(
             rate_limiter.clone(),
             middleware::rate_limit::rate_limit_middleware,
         ));
 
+    // Stripe webhook needs the raw body (Natours mounts this before `express.json`).
+    let webhook = Router::new()
+        .route("/webhook-checkout", post(webhook_checkout))
+        .with_state(app_state.clone());
+
     let cors = CorsLayer::new()
-        .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+        .allow_origin([
+            "http://localhost:3000".parse::<HeaderValue>().unwrap(),
+            "http://localhost:5173".parse::<HeaderValue>().unwrap(),
+            "https://localhost:5173".parse::<HeaderValue>().unwrap(),
+        ])
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_headers([
             header::CONTENT_TYPE,
@@ -102,6 +115,7 @@ async fn main() {
         .allow_credentials(true);
 
     let app: Router = Router::new()
+        .merge(webhook)
         .nest("/api/v1", api_v1)
         .fallback(handle_not_found)
         .with_state(app_state)

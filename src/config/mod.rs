@@ -26,6 +26,10 @@ pub struct AppConfig {
     pub sendgrid_api_key: String,
     pub publish_url: String,
     pub mapbox_token: String,
+    pub stripe_secret_key: String,
+    pub stripe_webhook_secret: String,
+    /// React app origin for Stripe success/cancel redirects and product images.
+    pub frontend_url: String,
 }
 
 impl AppConfig {
@@ -72,6 +76,10 @@ impl AppConfig {
         let mapbox_token = env::var("MAPBOX_TOKEN")
             .or_else(|_| env::var("MAPBOX_ACCESS_TOKEN"))
             .unwrap_or_default();
+        let stripe_secret_key = env::var("STRIPE_SECRET_KEY").unwrap_or_default();
+        let stripe_webhook_secret = env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
+        let frontend_url = env::var("FRONTEND_URL")
+            .unwrap_or_else(|_| "https://localhost:5173".to_string());
 
         Self {
             host,
@@ -95,6 +103,9 @@ impl AppConfig {
             sendgrid_api_key,
             publish_url,
             mapbox_token,
+            stripe_secret_key,
+            stripe_webhook_secret,
+            frontend_url,
         }
     }
 

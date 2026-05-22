@@ -8,9 +8,11 @@ use mongodb::Collection;
 use serde::Serialize;
 use serde_json::{json, Value};
 
+use serde::Deserialize;
+
 use crate::models::factory_model::FactoryModel;
 use crate::models::review::Review;
-use crate::models::user::User;
+use crate::models::user::{User, UserRole};
 use crate::state::AppState;
 use crate::utils::api_features::ApiFeatures;
 use crate::utils::error::AppError;
@@ -22,6 +24,21 @@ pub struct UserSummary {
     pub id: Option<ObjectId>,
     pub name: String,
     pub photo: String,
+    /// Present for tour guides; omitted on review authors.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<UserRole>,
+}
+
+/// Partial user document from a projection — must not deserialize as full [`User`].
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UserReviewFields {
+    #[serde(rename = "_id", default)]
+    id: Option<ObjectId>,
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    photo: String,
 }
 
 impl From<User> for UserSummary {
@@ -30,6 +47,18 @@ impl From<User> for UserSummary {
             id: u.id,
             name: u.name,
             photo: u.photo,
+            role: Some(u.role),
+        }
+    }
+}
+
+impl From<UserReviewFields> for UserSummary {
+    fn from(u: UserReviewFields) -> Self {
+        Self {
+            id: u.id,
+            name: u.name,
+            photo: u.photo,
+            role: None,
         }
     }
 }
@@ -109,8 +138,9 @@ pub async fn populate_review_docs(
     }
 
     let user_ids: Vec<ObjectId> = reviews.iter().map(|r| r.user).collect();
-    let users_coll: Collection<User> = state.client.database("natours").collection("users");
-    let users: Vec<User> = users_coll
+    let users_coll: Collection<UserReviewFields> =
+        state.client.database("natours").collection("users");
+    let users: Vec<UserReviewFields> = users_coll
         .find(doc! { "_id": { "$in": &user_ids } })
         .projection(doc! { "name": 1, "photo": 1 })
         .await
