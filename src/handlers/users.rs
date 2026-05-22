@@ -7,22 +7,17 @@ use axum::{
     http::StatusCode,
     Extension, Json,
 };
+use axum_extra::extract::Multipart;
 use mongodb::bson::doc;
 use mongodb::options::{FindOneAndUpdateOptions, ReturnDocument};
-use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::handlers::handler_factory;
 use crate::models::user::User;
+use crate::services::user_photo::save_user_photo;
 use crate::state::AppState;
 use crate::utils::error::AppError;
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateUserDataBody {
-    pub name: Option<String>,
-    pub email: Option<String>,
-}
+use crate::utils::validate::validate_email;
 
 pub async fn get_all_users(
     state: State<AppState>,
@@ -76,22 +71,76 @@ pub async fn get_me(
     handler_factory::get_one::<User>(State(state), Path(id.to_hex())).await
 }
 
-/// `updateMe` — name/email only (no password, no photo upload).
+/// `PATCH /users/updateUserData` — multipart name, email, optional photo (Natours `updateMe`).
 pub async fn update_user_data(
     State(state): State<AppState>,
     Extension(user): Extension<User>,
-    Json(body): Json<UpdateUserDataBody>,
+    mut multipart: Multipart,
 ) -> Result<Json<Value>, AppError> {
     let id = user
         .id
         .ok_or_else(|| AppError::internal("User document missing _id."))?;
 
-    let mut set_doc = doc! {};
-    if let Some(name) = body.name {
-        set_doc.insert("name", name.trim());
+    let mut name: Option<String> = None;
+    let mut email: Option<String> = None;
+    let mut photo_bytes: Option<Vec<u8>> = None;
+    let mut photo_content_type: Option<String> = None;
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::bad_request(format!("Invalid form data: {e}")))?
+    {
+        match field.name().unwrap_or("") {
+            "name" => {
+                let text = field
+                    .text()
+                    .await
+                    .map_err(|e| AppError::bad_request(format!("Invalid name field: {e}")))?;
+                if !text.trim().is_empty() {
+                    name = Some(text);
+                }
+            }
+            "email" => {
+                let text = field
+                    .text()
+                    .await
+                    .map_err(|e| AppError::bad_request(format!("Invalid email field: {e}")))?;
+                if !text.trim().is_empty() {
+                    email = Some(text);
+                }
+            }
+            "photo" => {
+                photo_content_type = field.content_type().map(|c| c.to_string());
+                let bytes = field
+                    .bytes()
+                    .await
+                    .map_err(|e| AppError::bad_request(format!("Invalid photo field: {e}")))?;
+                if !bytes.is_empty() {
+                    photo_bytes = Some(bytes.to_vec());
+                }
+            }
+            _ => {}
+        }
     }
-    if let Some(email) = body.email {
-        set_doc.insert("email", email.trim().to_lowercase());
+
+    let mut set_doc = doc! {};
+    if let Some(ref n) = name {
+        set_doc.insert("name", n.trim());
+    }
+    if let Some(ref e) = email {
+        let trimmed = e.trim().to_lowercase();
+        validate_email(&trimmed)?;
+        set_doc.insert("email", trimmed);
+    }
+    if let Some(bytes) = photo_bytes {
+        let filename = save_user_photo(
+            &state.config.users_upload_dir,
+            &id,
+            &bytes,
+            photo_content_type.as_deref(),
+        )?;
+        set_doc.insert("photo", filename);
     }
 
     if set_doc.is_empty() {

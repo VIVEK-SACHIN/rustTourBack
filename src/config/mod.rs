@@ -30,6 +30,10 @@ pub struct AppConfig {
     pub stripe_webhook_secret: String,
     /// React app origin for Stripe success/cancel redirects and product images.
     pub frontend_url: String,
+    /// Natours `public/` — static files (avatars under `img/users`).
+    pub public_dir: std::path::PathBuf,
+    /// Where resized uploads are written (`public/img/users`).
+    pub users_upload_dir: std::path::PathBuf,
 }
 
 impl AppConfig {
@@ -80,6 +84,14 @@ impl AppConfig {
         let stripe_webhook_secret = env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
         let frontend_url = env::var("FRONTEND_URL")
             .unwrap_or_else(|_| "https://localhost:5173".to_string());
+        let public_dir = env::var("PUBLIC_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|_| {
+                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("public")
+            });
+        let users_upload_dir = env::var("USERS_UPLOAD_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|_| public_dir.join("img/users"));
 
         Self {
             host,
@@ -106,6 +118,8 @@ impl AppConfig {
             stripe_secret_key,
             stripe_webhook_secret,
             frontend_url,
+            public_dir,
+            users_upload_dir,
         }
     }
 

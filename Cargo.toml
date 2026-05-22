@@ -13,13 +13,14 @@ chrono = { version = "0.4", features = ["serde"] }
 bson = { version = "2.0", features = ["chrono-0_4"] }
 mongodb = "3.0"
 tower = "0.4"
-tower-http = { version = "0.5", features = ["catch-panic", "cors", "compression-gzip", "limit"] }
+tower-http = { version = "0.5", features = ["catch-panic", "cors", "compression-gzip", "fs", "limit"] }
 governor = "0.6"
 lettre = { version = "0.11", default-features = false, features = ["tokio1-native-tls", "smtp-transport", "builder"] }
 futures = "0.3"
 jsonwebtoken = "9"
 bcrypt = "0.15"
-axum-extra = { version = "0.9", features = ["cookie"] }
+axum-extra = { version = "0.9", features = ["cookie", "multipart"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 sha2 = "0.10"
 rand = "0.8"
 hex = "0.4"

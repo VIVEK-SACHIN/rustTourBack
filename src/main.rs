@@ -23,6 +23,7 @@ use tower_http::{
     compression::CompressionLayer,
     cors::CorsLayer,
     limit::RequestBodyLimitLayer,
+    services::ServeDir,
 };
 use config::AppConfig;
 use db::mongodb::create_mongo_client;
@@ -114,13 +115,20 @@ async fn main() {
         ])
         .allow_credentials(true);
 
+    // Natours `express.static('public')` — user avatars at `/img/users/*`
+    let user_photos_dir = app_state.config.users_upload_dir.clone();
+    if let Err(err) = std::fs::create_dir_all(&user_photos_dir) {
+        eprintln!("Warning: could not create users upload dir {:?}: {err}", user_photos_dir);
+    }
+
     let app: Router = Router::new()
         .merge(webhook)
         .nest("/api/v1", api_v1)
+        .nest_service("/img/users", ServeDir::new(user_photos_dir))
         .fallback(handle_not_found)
         .with_state(app_state)
         .layer(CompressionLayer::new())
-        .layer(RequestBodyLimitLayer::new(10 * 1024))
+        .layer(RequestBodyLimitLayer::new(5 * 1024 * 1024))
         .layer(axum_middleware::from_fn(
             middleware::mongo_sanitize::mongo_sanitize_middleware,
         ))

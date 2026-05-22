@@ -1,2 +1,4 @@
 /target
 .env
+# User-uploaded avatars (keep seeded defaults like default.jpg)
+/public/img/users/user-*
