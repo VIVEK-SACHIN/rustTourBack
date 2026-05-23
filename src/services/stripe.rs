@@ -38,11 +38,9 @@ pub async fn create_checkout_session(
     }
 
     let frontend = config.frontend_url.trim_end_matches('/');
+    let api_origin = config.server_public_url.trim_end_matches('/');
     let tour_oid = tour_id.to_hex();
-    let image_url = format!(
-        "{frontend}/img/tours/{}",
-        tour.image_cover
-    );
+    let image_url = format!("{api_origin}/img/tours/{}", tour.image_cover);
 
     let unit_amount = (tour.price * 100.0).round() as i64;
     let product_name = format!("{} Tour", tour.name);

@@ -115,16 +115,27 @@ async fn main() {
         ])
         .allow_credentials(true);
 
-    // TravelAndTour `express.static('public')` — user avatars at `/img/users/*`
+    // TravelAndTour `express.static('public')` — `/img/users/*`, `/img/tours/*`, etc.
     let user_photos_dir = app_state.config.users_upload_dir.clone();
     if let Err(err) = std::fs::create_dir_all(&user_photos_dir) {
         eprintln!("Warning: could not create users upload dir {:?}: {err}", user_photos_dir);
     }
+    let tours_static_dir = app_state.config.tours_static_dir.clone();
+    if let Err(err) = std::fs::create_dir_all(&tours_static_dir) {
+        eprintln!("Warning: could not create tours static dir {:?}: {err}", tours_static_dir);
+    }
+    let static_img_dir = app_state.config.public_dir.join("img");
+    if let Err(err) = std::fs::create_dir_all(&static_img_dir) {
+        eprintln!("Warning: could not create static img dir {:?}: {err}", static_img_dir);
+    }
+    eprintln!("Static images: /img -> {:?}", static_img_dir);
+
+    let listen_port = app_state.config.port;
 
     let app: Router = Router::new()
         .merge(webhook)
         .nest("/api/v1", api_v1)
-        .nest_service("/img/users", ServeDir::new(user_photos_dir))
+        .nest_service("/img", ServeDir::new(static_img_dir))
         .fallback(handle_not_found)
         .with_state(app_state)
         .layer(CompressionLayer::new())
@@ -152,7 +163,17 @@ async fn main() {
         AppError::not_found(format!("Cannot find {} on this server", uri.path()))
     }
 
-    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap_or_else(|err| {
+        if err.kind() == std::io::ErrorKind::AddrInUse {
+            eprintln!(
+                "Fatal: {addr} is already in use. Stop the other process (lsof -i :{}), or change SERVER_PORT in .env.",
+                listen_port
+            );
+        } else {
+            eprintln!("Fatal: could not bind to {addr}: {err}");
+        }
+        std::process::exit(1);
+    });
     println!("App running on {addr}...");
 
     let server = axum::serve(

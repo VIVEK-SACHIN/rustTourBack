@@ -36,6 +36,10 @@ pub struct AppConfig {
     pub public_dir: std::path::PathBuf,
     /// Where resized uploads are written (`public/img/users`).
     pub users_upload_dir: std::path::PathBuf,
+    /// Seeded tour photos (`public/img/tours`), served at `/img/tours/*`.
+    pub tours_static_dir: std::path::PathBuf,
+    /// Public API origin for absolute URLs (Stripe product images, etc.).
+    pub server_public_url: String,
 }
 
 impl AppConfig {
@@ -96,6 +100,11 @@ impl AppConfig {
         let users_upload_dir = env::var("USERS_UPLOAD_DIR")
             .map(std::path::PathBuf::from)
             .unwrap_or_else(|_| public_dir.join("img/users"));
+        let tours_static_dir = env::var("TOURS_STATIC_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|_| public_dir.join("img/tours"));
+        let server_public_url = env::var("SERVER_PUBLIC_URL")
+            .unwrap_or_else(|_| format!("http://localhost:{port}"));
 
         Self {
             host,
@@ -125,6 +134,8 @@ impl AppConfig {
             frontend_url,
             public_dir,
             users_upload_dir,
+            tours_static_dir,
+            server_public_url,
         }
     }
 
