@@ -1,4 +1,4 @@
-//! Sanitize string values in JSON bodies (Natours `xss-clean`).
+//! Sanitize string values in JSON bodies (TravelAndTour `xss-clean`).
 
 use serde_json::Value;
 

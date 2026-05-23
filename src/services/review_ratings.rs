@@ -1,14 +1,14 @@
-//! Natours `reviewSchema.statics.calcAverageRatings` — updates tour rating fields.
+//! TravelAndTour `reviewSchema.statics.calcAverageRatings` — updates tour rating fields.
 
 use futures::TryStreamExt;
 use mongodb::bson::{doc, oid::ObjectId, Document};
-use mongodb::Client;
 
+use crate::state::AppState;
 use crate::utils::error::AppError;
 
 /// Recompute `ratingsQuantity` and `ratingsAverage` on a tour from its reviews.
-pub async fn calc_average_ratings(client: &Client, tour_id: ObjectId) -> Result<(), AppError> {
-    let db = client.database("natours");
+pub async fn calc_average_ratings(state: &AppState, tour_id: ObjectId) -> Result<(), AppError> {
+    let db = state.db();
     let reviews = db.collection::<Document>("reviews");
 
     let pipeline = vec![

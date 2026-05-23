@@ -1,4 +1,4 @@
-//! Security response headers (Natours `helmet`, CSP disabled).
+//! Security response headers (TravelAndTour `helmet`, CSP disabled).
 
 use axum::{
     body::Body,

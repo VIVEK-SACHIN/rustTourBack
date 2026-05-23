@@ -46,7 +46,7 @@ pub async fn protect(
     let id = mongodb::bson::oid::ObjectId::parse_str(&token_data.claims.id)
         .map_err(|_| AppError::unauthorized("Invalid token. Please log in again!"))?;
 
-    let db = state.client.database("natours");
+    let db = state.db();
     let users = db.collection::<User>("users");
 
     let filter = doc! {

@@ -96,7 +96,7 @@ pub async fn signup(
         return Err(AppError::bad_request("Passwords are not the same!"));
     }
 
-    let db = state.client.database("natours");
+    let db = state.db();
     let users = db.collection::<User>("users");
 
     let email_lower = body.email.trim().to_lowercase();
@@ -112,7 +112,7 @@ pub async fn signup(
 
     let hash = hash_password(&body.password).map_err(AppError::from)?;
 
-    // Natours signup should not allow self-assigning admin; always create a `user`.
+    // TravelAndTour signup should not allow self-assigning admin; always create a `user`.
     let _ = body.role;
     let role = UserRole::User;
 
@@ -177,7 +177,7 @@ pub async fn login(
         return Err(AppError::bad_request("please provide email and password"));
     }
 
-    let db = state.client.database("natours");
+    let db = state.db();
     let users = db.collection::<User>("users");
 
     let user = users
@@ -219,7 +219,7 @@ pub async fn forgot_password(
     Json(body): Json<ForgotPasswordBody>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let email = body.email.trim().to_lowercase();
-    let db = state.client.database("natours");
+    let db = state.db();
     let users = db.collection::<User>("users");
 
     let mut user = users
@@ -279,7 +279,7 @@ pub async fn reset_password(
         hex::encode(h.finalize())
     };
 
-    let db = state.client.database("natours");
+    let db = state.db();
     let users = db.collection::<User>("users");
     let now_ms = chrono::Utc::now().timestamp_millis();
 
@@ -335,7 +335,7 @@ pub async fn update_password(
         .id
         .ok_or_else(|| AppError::unauthorized("Invalid session."))?;
 
-    let db = state.client.database("natours");
+    let db = state.db();
     let users = db.collection::<User>("users");
 
     let mut user = users

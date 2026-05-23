@@ -1,4 +1,4 @@
-//! Query-string features from Natours `APIFeatures.js` (filter, sort, fields, paginate).
+//! Query-string features from TravelAndTour `APIFeatures.js` (filter, sort, fields, paginate).
 
 use std::collections::HashMap;
 

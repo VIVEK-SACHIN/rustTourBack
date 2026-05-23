@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Stripe checkout fields persisted on a booking (Natours billing tab data source).
+/// Stripe checkout fields persisted on a booking (TravelAndTour billing tab data source).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BillingDetails {

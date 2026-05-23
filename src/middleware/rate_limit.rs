@@ -1,4 +1,4 @@
-//! Per-IP rate limit for `/api` — Natours: 100 requests / hour.
+//! Per-IP rate limit for `/api` — TravelAndTour: 100 requests / hour.
 
 use std::net::SocketAddr;
 use std::num::NonZeroU32;

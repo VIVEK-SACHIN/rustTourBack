@@ -52,7 +52,7 @@ pub async fn get_my_reviews(
         .id
         .ok_or_else(|| AppError::internal("User missing _id"))?;
 
-    let db = state.client.database("natours");
+    let db = state.db();
     let reviews_coll = db.collection::<Review>("reviews");
     let tours_coll = db.collection::<Tour>("tours");
 
@@ -167,7 +167,7 @@ async fn create_review_impl(
     };
 
     let (status, json) = handler_factory::create_one::<Review>(state.clone(), Json(review)).await?;
-    calc_average_ratings(&state.client, tour).await?;
+    calc_average_ratings(&state, tour).await?;
     Ok((status, json))
 }
 
@@ -189,10 +189,9 @@ pub async fn update_review(
     assert_review_owner(&user, &existing)?;
 
     let tour_id = existing.tour;
-    let client = state.client.clone();
     let resp =
-        handler_factory::update_one::<Review>(AxumState(state), Path(id), Json(body)).await?;
-    calc_average_ratings(&client, tour_id).await?;
+        handler_factory::update_one::<Review>(AxumState(state.clone()), Path(id), Json(body)).await?;
+    calc_average_ratings(&state, tour_id).await?;
     Ok(resp)
 }
 
@@ -206,14 +205,13 @@ pub async fn delete_review(
     assert_review_owner(&user, &existing)?;
 
     let tour_id = existing.tour;
-    let client = state.client.clone();
-    let resp = handler_factory::delete_one::<Review>(AxumState(state), Path(id)).await?;
-    calc_average_ratings(&client, tour_id).await?;
+    let resp = handler_factory::delete_one::<Review>(AxumState(state.clone()), Path(id)).await?;
+    calc_average_ratings(&state, tour_id).await?;
     Ok(resp)
 }
 
 async fn load_review(state: &AppState, review_id: ObjectId) -> Result<Review, AppError> {
-    let db = state.client.database("natours");
+    let db = state.db();
     let reviews = db.collection::<Review>("reviews");
     reviews
         .find_one(doc! { "_id": review_id })

@@ -1,4 +1,4 @@
-//! Transactional email (Natours `utils/newemail.js`) — Mailtrap dev / SendGrid production.
+//! Transactional email (TravelAndTour `utils/newemail.js`) — Mailtrap dev / SendGrid production.
 
 use lettre::message::header::ContentType;
 use lettre::message::{Mailbox, MultiPart, SinglePart};
@@ -27,7 +27,7 @@ impl<'a> Email<'a> {
     }
 
     pub async fn send_welcome(&self) -> Result<(), AppError> {
-        let subject = "Welcome to the Natours Family!";
+        let subject = "Welcome to the TravelAndTour Family!";
         let html = welcome_html(&self.first_name, self.url);
         let text = html_to_text(&html);
         self.send(subject, &html, &text).await
@@ -136,7 +136,7 @@ fn html_to_text(html: &str) -> String {
 
 fn welcome_html(first_name: &str, url: &str) -> String {
     format!(
-        r#"<p>Hi {first_name},</p><p>Welcome to Natours! We're excited to have you.</p>
+        r#"<p>Hi {first_name},</p><p>Welcome to TravelAndTour! We're excited to have you.</p>
         <p><a href="{url}">View your account</a></p>"#
     )
 }

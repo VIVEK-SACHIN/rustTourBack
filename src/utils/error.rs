@@ -1,4 +1,4 @@
-//! Centralized API errors modeled after Natours `AppError` + `errorController`.
+//! Centralized API errors modeled after TravelAndTour `AppError` + `errorController`.
 //!
 //! - **Operational** errors: safe to send `message` to the client in production.
 //! - **Non-operational** errors: production hides details (like Express `sendErrorProd`).
@@ -137,7 +137,7 @@ impl AppError {
     }
 }
 
-/// Maps MongoDB driver errors into operational 4xx where appropriate (Natours `errorController` prod branch).
+/// Maps MongoDB driver errors into operational 4xx where appropriate (TravelAndTour `errorController` prod branch).
 pub fn app_error_from_mongo(err: MongoError) -> AppError {
     let debug = err.to_string();
 

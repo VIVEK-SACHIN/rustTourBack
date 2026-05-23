@@ -1,4 +1,4 @@
-//! Stripe Checkout + webhook verification (Natours `bookingController.js`).
+//! Stripe Checkout + webhook verification (TravelAndTour `bookingController.js`).
 
 use std::time::{SystemTime, UNIX_EPOCH};
 

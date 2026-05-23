@@ -1,6 +1,6 @@
 # Stripe payments — setup, env vars, and local dev
 
-This document describes how Stripe Checkout is integrated in this repo: **TravelFrontend** (React) + **rustToutBack** (Rust API). The flow mirrors the original **TravelAndTour** (Express) Natours booking pattern.
+This document describes how Stripe Checkout is integrated in this repo: **TravelFrontend** (React) + **rustToutBack** (Rust API). The flow mirrors the original **TravelAndTour** (Express) TravelAndTour booking pattern.
 
 ---
 

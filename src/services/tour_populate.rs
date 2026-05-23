@@ -1,4 +1,4 @@
-//! Populate tour `guides` on list queries (Natours tour `pre(/^find/)` hook).
+//! Populate tour `guides` on list queries (TravelAndTour tour `pre(/^find/)` hook).
 
 use std::collections::{HashMap, HashSet};
 
@@ -20,10 +20,7 @@ pub async fn list_tours_with_guides(
     query: &HashMap<String, String>,
 ) -> Result<Value, AppError> {
     let features = ApiFeatures::from_query(query, Tour::list_filter());
-    let coll: Collection<Tour> = state
-        .client
-        .database("natours")
-        .collection(Tour::collection_name());
+    let coll: Collection<Tour> = state.db().collection(Tour::collection_name());
 
     let mut opts = features.find_options;
     if opts.projection.is_none() {
@@ -59,7 +56,7 @@ pub async fn populate_guides_on_tours(
         HashMap::new()
     } else {
         let ids: Vec<_> = guide_ids.into_iter().collect();
-        let users_coll: Collection<User> = state.client.database("natours").collection("users");
+        let users_coll: Collection<User> = state.db().collection("users");
         let users: Vec<User> = users_coll
             .find(doc! { "_id": { "$in": &ids }, "active": { "$ne": false } })
             .projection(doc! {

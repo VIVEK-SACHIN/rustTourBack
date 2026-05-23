@@ -1,4 +1,4 @@
-//! Booking + Stripe checkout handlers (Natours `bookingController.js`).
+//! Booking + Stripe checkout handlers (TravelAndTour `bookingController.js`).
 
 use axum::{
     body::Bytes,
@@ -30,7 +30,7 @@ pub async fn get_checkout_session(
     Path(tour_id): Path<String>,
 ) -> Result<Json<Value>, AppError> {
     let tour_oid = parse_tour_id(&tour_id)?;
-    let db = state.client.database("natours");
+    let db = state.db();
     let tours = db.collection::<Tour>("tours");
 
     let tour = tours
@@ -51,7 +51,7 @@ async fn list_my_bookings_with_tours(
     state: &AppState,
     user_id: ObjectId,
 ) -> Result<Vec<Value>, AppError> {
-    let db = state.client.database("natours");
+    let db = state.db();
     let bookings_coll = db.collection::<Booking>("bookings");
     let tours_coll = db.collection::<Tour>("tours");
 
@@ -153,7 +153,7 @@ async fn create_booking_from_checkout_session(
         .ok_or_else(|| AppError::internal("Checkout session missing amount_total"))?;
 
     let tour_oid = parse_tour_id(tour_id)?;
-    let db = state.client.database("natours");
+    let db = state.db();
     let users = db.collection::<User>("users");
 
     let user = users
@@ -188,7 +188,7 @@ async fn create_booking_from_checkout_session(
     Ok(())
 }
 
-/// `POST /webhook-checkout` — raw body, before JSON middleware (Natours `app.js`).
+/// `POST /webhook-checkout` — raw body, before JSON middleware (TravelAndTour `app.js`).
 pub async fn webhook_checkout(
     State(state): State<AppState>,
     headers: HeaderMap,

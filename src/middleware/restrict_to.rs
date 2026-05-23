@@ -9,7 +9,7 @@ use axum::{
 use crate::models::user::{User, UserRole};
 use crate::utils::error::AppError;
 
-/// Role allow-list for [`restrict_to`] (Natours `authController.restrictTo`).
+/// Role allow-list for [`restrict_to`] (TravelAndTour `authController.restrictTo`).
 #[derive(Clone)]
 pub struct RequireRoles(pub &'static [UserRole]);
 

@@ -1,4 +1,4 @@
-//! Generic CRUD handlers — port of Natours `handlerFactory.js`.
+//! Generic CRUD handlers — port of TravelAndTour `handlerFactory.js`.
 
 use std::collections::HashMap;
 
@@ -22,13 +22,8 @@ fn parse_object_id(id: &str) -> Result<ObjectId, AppError> {
     ObjectId::parse_str(id).map_err(|e| AppError::bad_request(format!("Invalid id: {e}")))
 }
 
-fn collection<T: FactoryModel>(
-    state: &AppState,
-) -> mongodb::Collection<T> {
-    state
-        .client
-        .database("natours")
-        .collection(T::collection_name())
+fn collection<T: FactoryModel>(state: &AppState) -> mongodb::Collection<T> {
+    state.db().collection(T::collection_name())
 }
 
 /// `getAll` — optional `tour_id` for nested review routes (`req.params.tourId`).

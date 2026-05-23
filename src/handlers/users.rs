@@ -48,7 +48,7 @@ pub async fn delete_user(
     handler_factory::delete_one::<User>(state, id).await
 }
 
-/// Natours `createUser` — not for public signup.
+/// TravelAndTour `createUser` — not for public signup.
 pub async fn create_user() -> Result<(StatusCode, Json<Value>), AppError> {
     Ok((
         StatusCode::INTERNAL_SERVER_ERROR,
@@ -71,7 +71,7 @@ pub async fn get_me(
     handler_factory::get_one::<User>(State(state), Path(id.to_hex())).await
 }
 
-/// `PATCH /users/updateUserData` — multipart name, email, optional photo (Natours `updateMe`).
+/// `PATCH /users/updateUserData` — multipart name, email, optional photo (TravelAndTour `updateMe`).
 pub async fn update_user_data(
     State(state): State<AppState>,
     Extension(user): Extension<User>,
@@ -147,7 +147,7 @@ pub async fn update_user_data(
         return Err(AppError::bad_request("No valid fields to update."));
     }
 
-    let db = state.client.database("natours");
+    let db = state.db();
     let users = db.collection::<User>("users");
     let opts = FindOneAndUpdateOptions::builder()
         .return_document(ReturnDocument::After)
@@ -174,7 +174,7 @@ pub async fn delete_me(
         .id
         .ok_or_else(|| AppError::internal("User document missing _id."))?;
 
-    let db = state.client.database("natours");
+    let db = state.db();
     let users = db.collection::<User>("users");
 
     users

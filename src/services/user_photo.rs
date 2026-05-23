@@ -1,4 +1,4 @@
-//! User profile photo upload — Natours `uploadUserPhoto` + `resizeUserPhoto` (multer + sharp).
+//! User profile photo upload — TravelAndTour `uploadUserPhoto` + `resizeUserPhoto` (multer + sharp).
 
 use std::path::Path;
 
@@ -11,7 +11,7 @@ use crate::utils::error::AppError;
 
 const MAX_BYTES: usize = 5 * 1024 * 1024;
 
-/// Resize to 500×500 JPEG and write under `upload_dir` (Natours `public/img/users` on the API server).
+/// Resize to 500×500 JPEG and write under `upload_dir` (TravelAndTour `public/img/users` on the API server).
 pub fn save_user_photo(
     upload_dir: &Path,
     user_id: &ObjectId,

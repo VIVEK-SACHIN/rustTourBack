@@ -1,4 +1,4 @@
-//! HTTP parameter pollution — Natours `hpp` (last value + whitelist arrays).
+//! HTTP parameter pollution — TravelAndTour `hpp` (last value + whitelist arrays).
 
 use std::collections::HashMap;
 

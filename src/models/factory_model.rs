@@ -1,7 +1,7 @@
 use mongodb::bson::{doc, oid::ObjectId, Document};
 use serde::{de::DeserializeOwned, Serialize};
 
-/// Models used by [`crate::handlers::handler_factory`] (Natours `handlerFactory.js`).
+/// Models used by [`crate::handlers::handler_factory`] (TravelAndTour `handlerFactory.js`).
 pub trait FactoryModel: Serialize + DeserializeOwned + Send + Sync + Unpin + 'static {
     fn collection_name() -> &'static str;
 

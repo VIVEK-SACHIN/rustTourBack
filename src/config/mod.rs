@@ -9,9 +9,11 @@ pub struct AppConfig {
     pub log_level: String,
     /// `mongodb+srv://...` (SRV lookup — can fail on macOS with `.local` DNS search domains).
     pub database: String,
-    /// Standard `mongodb://host:27017/natours` — use when SRV/DNS fails (Atlas → Connect → Drivers).
+    /// Standard `mongodb://host:27017/TravelAndTour` — use when SRV/DNS fails (Atlas → Connect → Drivers).
     pub database_direct: String,
     pub database_local: String,
+    /// MongoDB database name (collections live under this DB on the cluster).
+    pub database_name: String,
     pub database_password: String,
     pub jwt_secret: String,
     pub jwt_expires_in: String,
@@ -22,7 +24,7 @@ pub struct AppConfig {
     pub email_port: u16,
     pub email_from: String,
     pub email_from_name: String,
-    /// SendGrid API key when `APP_ENV=production` (Natours `SENDGRID_API_KEY`).
+    /// SendGrid API key when `APP_ENV=production` (TravelAndTour `SENDGRID_API_KEY`).
     pub sendgrid_api_key: String,
     pub publish_url: String,
     pub mapbox_token: String,
@@ -30,7 +32,7 @@ pub struct AppConfig {
     pub stripe_webhook_secret: String,
     /// React app origin for Stripe success/cancel redirects and product images.
     pub frontend_url: String,
-    /// Natours `public/` — static files (avatars under `img/users`).
+    /// TravelAndTour `public/` — static files (avatars under `img/users`).
     pub public_dir: std::path::PathBuf,
     /// Where resized uploads are written (`public/img/users`).
     pub users_upload_dir: std::path::PathBuf,
@@ -54,7 +56,9 @@ impl AppConfig {
         let database = env::var("DATABASE").unwrap_or_default();
         let database_direct = env::var("DATABASE_DIRECT").unwrap_or_default();
         let database_local = env::var("DATABASE_LOCAL")
-            .unwrap_or_else(|_| "mongodb://127.0.0.1:27017/natours".to_string());
+            .unwrap_or_else(|_| "mongodb://127.0.0.1:27017/TravelAndTour".to_string());
+        let database_name = env::var("DATABASE_NAME")
+            .unwrap_or_else(|_| "TravelAndTour".to_string());
         let database_password = env::var("DATABASE_PASSWORD").unwrap_or_default();
         let jwt_secret = env::var("JWT_SECRET").unwrap_or_default();
         let jwt_expires_in = env::var("JWT_EXPIRES_IN")
@@ -72,9 +76,9 @@ impl AppConfig {
             .and_then(|v| v.parse::<u16>().ok())
             .unwrap_or(2525);
         let email_from =
-            env::var("EMAIL_FROM").unwrap_or_else(|_| "noreply@natours.dev".to_string());
+            env::var("EMAIL_FROM").unwrap_or_else(|_| "noreply@TravelAndTour.dev".to_string());
         let email_from_name =
-            env::var("EMAIL_FROM_NAME").unwrap_or_else(|_| "Natours".to_string());
+            env::var("EMAIL_FROM_NAME").unwrap_or_else(|_| "TravelAndTour".to_string());
         let sendgrid_api_key = env::var("SENDGRID_API_KEY").unwrap_or_default();
         let publish_url = env::var("PUBLISH_URL").unwrap_or_default();
         let mapbox_token = env::var("MAPBOX_TOKEN")
@@ -102,6 +106,7 @@ impl AppConfig {
             database,
             database_direct,
             database_local,
+            database_name,
             database_password,
             jwt_secret,
             jwt_expires_in,

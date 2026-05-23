@@ -1,4 +1,4 @@
-//! Populate review `user` with `name` and `photo` (Natours review pre-find hook).
+//! Populate review `user` with `name` and `photo` (TravelAndTour review pre-find hook).
 
 use std::collections::HashMap;
 
@@ -76,10 +76,7 @@ pub async fn list_reviews_populated(
     }
 
     let features = ApiFeatures::from_query(query, base);
-    let coll: Collection<Review> = state
-        .client
-        .database("natours")
-        .collection(Review::collection_name());
+    let coll: Collection<Review> = state.db().collection(Review::collection_name());
 
     let cursor = coll
         .find(features.filter)
@@ -101,10 +98,7 @@ pub async fn get_review_populated(state: &AppState, id: &str) -> Result<Value, A
     let oid = ObjectId::parse_str(id)
         .map_err(|e| AppError::bad_request(format!("Invalid id: {e}")))?;
 
-    let coll: Collection<Review> = state
-        .client
-        .database("natours")
-        .collection(Review::collection_name());
+    let coll: Collection<Review> = state.db().collection(Review::collection_name());
 
     let mut filter = doc! { "_id": oid };
     for (k, v) in Review::list_filter() {
@@ -138,8 +132,7 @@ pub async fn populate_review_docs(
     }
 
     let user_ids: Vec<ObjectId> = reviews.iter().map(|r| r.user).collect();
-    let users_coll: Collection<UserReviewFields> =
-        state.client.database("natours").collection("users");
+    let users_coll: Collection<UserReviewFields> = state.db().collection("users");
     let users: Vec<UserReviewFields> = users_coll
         .find(doc! { "_id": { "$in": &user_ids } })
         .projection(doc! { "name": 1, "photo": 1 })

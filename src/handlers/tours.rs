@@ -1,4 +1,4 @@
-//! Tour HTTP handlers — factory CRUD + Natours `tourController` specials.
+//! Tour HTTP handlers — factory CRUD + TravelAndTour `tourController` specials.
 
 use std::collections::HashMap;
 
@@ -52,7 +52,7 @@ pub async fn get_tour(
     Path(id): Path<String>,
 ) -> Result<Json<Value>, AppError> {
     let oid = parse_oid(&id)?;
-    let db = state.client.database("natours");
+    let db = state.db();
     let tours = db.collection::<Tour>("tours");
 
     let tour = tours
@@ -86,7 +86,7 @@ pub async fn get_tour(
 }
 
 pub async fn get_tour_stats(State(state): State<AppState>) -> Result<Json<Value>, AppError> {
-    let db = state.client.database("natours");
+    let db = state.db();
     let tours = db.collection::<Document>("tours");
 
     let pipeline = vec![
@@ -133,7 +133,7 @@ pub async fn get_monthly_plan(
         .parse()
         .map_err(|_| AppError::bad_request("Invalid year"))?;
 
-    let db = state.client.database("natours");
+    let db = state.db();
     let tours = db.collection::<Document>("tours");
 
     let pipeline = vec![
@@ -195,7 +195,7 @@ pub async fn get_tours_within(
         distance / 6378.1
     };
 
-    let db = state.client.database("natours");
+    let db = state.db();
     let tours = db.collection::<Tour>("tours");
 
     let filter = doc! {
@@ -235,7 +235,7 @@ pub async fn get_distances(
     let (lat, lng) = parse_latlng(&p.latlng)?;
     let multiplier = if p.unit == "mi" { 0.000621371 } else { 0.001 };
 
-    let db = state.client.database("natours");
+    let db = state.db();
     let tours = db.collection::<Document>("tours");
 
     let pipeline = vec![

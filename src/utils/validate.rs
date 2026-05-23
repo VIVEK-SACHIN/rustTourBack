@@ -1,4 +1,4 @@
-//! Input validation mirroring key Natours Mongoose validators.
+//! Input validation mirroring key TravelAndTour Mongoose validators.
 
 use regex::Regex;
 use serde_json::Value;

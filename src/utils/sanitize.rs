@@ -1,4 +1,4 @@
-//! Strip MongoDB operator keys from JSON (Natours `express-mongo-sanitize`).
+//! Strip MongoDB operator keys from JSON (TravelAndTour `express-mongo-sanitize`).
 
 use serde_json::Value;
 

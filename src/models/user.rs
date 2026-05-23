@@ -68,7 +68,7 @@ impl Default for User {
 }
 
 impl User {
-    /// Natours `pre('save')` — invalidate JWTs issued before password change.
+    /// TravelAndTour `pre('save')` — invalidate JWTs issued before password change.
     pub fn touch_changed_password_at(&mut self) {
         self.changed_password_at = Some(Utc::now() - chrono::Duration::seconds(2));
     }

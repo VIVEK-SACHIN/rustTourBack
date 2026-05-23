@@ -95,7 +95,7 @@ async fn main() {
             middleware::rate_limit::rate_limit_middleware,
         ));
 
-    // Stripe webhook needs the raw body (Natours mounts this before `express.json`).
+    // Stripe webhook needs the raw body (TravelAndTour mounts this before `express.json`).
     let webhook = Router::new()
         .route("/webhook-checkout", post(webhook_checkout))
         .with_state(app_state.clone());
@@ -115,7 +115,7 @@ async fn main() {
         ])
         .allow_credentials(true);
 
-    // Natours `express.static('public')` — user avatars at `/img/users/*`
+    // TravelAndTour `express.static('public')` — user avatars at `/img/users/*`
     let user_photos_dir = app_state.config.users_upload_dir.clone();
     if let Err(err) = std::fs::create_dir_all(&user_photos_dir) {
         eprintln!("Warning: could not create users upload dir {:?}: {err}", user_photos_dir);

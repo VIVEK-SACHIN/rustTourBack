@@ -55,7 +55,7 @@ pub fn review_routes(state: &AppState) -> Router<AppState> {
         .merge(mutate)
 }
 
-/// Nested under `/api/v1/tours/:tourId/review` (Natours singular path).
+/// Nested under `/api/v1/tours/:tourId/review` (TravelAndTour singular path).
 pub fn nested_review_routes(state: &AppState) -> Router<AppState> {
     let s = state.clone();
 
