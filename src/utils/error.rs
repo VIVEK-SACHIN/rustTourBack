@@ -20,7 +20,7 @@ use serde_json::json;
 
 static PRODUCTION_MODE: OnceLock<bool> = OnceLock::new();
 
-/// Must be called from `main` after loading config (mirrors relying on `NODE_ENV` / `APP_ENV`).
+/// Must be called from `main` after loading config (uses `APP_ENV` via [`AppConfig::is_production`]).
 pub fn init_error_reporting(is_production: bool) {
     let _ = PRODUCTION_MODE.set(is_production);
 }

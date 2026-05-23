@@ -57,13 +57,22 @@ pub struct UpdatePasswordBody {
     pub password_confirm: String,
 }
 
+fn jwt_same_site(state: &AppState) -> SameSite {
+    if state.config.jwt_cookie_same_site_cross_origin() {
+        // tour.vivekdev.fun → tourapi.vivekdev.fun (cross-site XHR with credentials)
+        SameSite::None
+    } else {
+        SameSite::Lax
+    }
+}
+
 fn jwt_cookie(token: &str, state: &AppState) -> Cookie<'static> {
     let days = state.config.jwt_cookie_expires_in.clamp(1, 365) as i64;
     let mut c = Cookie::build(("jwt", token.to_string()))
         .path("/")
         .http_only(true)
         .max_age(Duration::days(days))
-        .same_site(SameSite::Lax);
+        .same_site(jwt_same_site(state));
     if state.config.is_production() {
         c = c.secure(true);
     }
@@ -74,7 +83,8 @@ fn logged_out_cookie(state: &AppState) -> Cookie<'static> {
     let mut c = Cookie::build(("jwt", "loggedout"))
         .path("/")
         .http_only(true)
-        .max_age(Duration::seconds(10));
+        .max_age(Duration::seconds(10))
+        .same_site(jwt_same_site(state));
     if state.config.is_production() {
         c = c.secure(true);
     }

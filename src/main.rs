@@ -13,7 +13,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::{
-    http::{header, HeaderValue, Method, StatusCode},
+    http::{header, Method, StatusCode},
     middleware as axum_middleware,
     response::IntoResponse,
     routing::post,
@@ -21,7 +21,7 @@ use axum::{
 };
 use tower_http::{
     compression::CompressionLayer,
-    cors::CorsLayer,
+    cors::{AllowOrigin, CorsLayer},
     limit::RequestBodyLimitLayer,
     services::ServeDir,
 };
@@ -100,12 +100,15 @@ async fn main() {
         .route("/webhook-checkout", post(webhook_checkout))
         .with_state(app_state.clone());
 
+    let cors_origins = app_state.config.cors_origins();
+    if cors_origins.is_empty() {
+        eprintln!("Warning: no CORS origins — set FRONTEND_URL (e.g. https://tour.vivekdev.fun)");
+    } else {
+        eprintln!("CORS allowed origins: {:?}", cors_origins);
+    }
+
     let cors = CorsLayer::new()
-        .allow_origin([
-            "http://localhost:3000".parse::<HeaderValue>().unwrap(),
-            "http://localhost:5173".parse::<HeaderValue>().unwrap(),
-            "https://localhost:5173".parse::<HeaderValue>().unwrap(),
-        ])
+        .allow_origin(AllowOrigin::list(cors_origins))
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_headers([
             header::CONTENT_TYPE,

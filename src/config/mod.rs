@@ -1,4 +1,7 @@
+use std::collections::HashSet;
 use std::env;
+
+use axum::http::HeaderValue;
 
 #[derive(Debug, Clone)]
 pub struct AppConfig {
@@ -49,9 +52,15 @@ impl AppConfig {
         }
         
         let host = env::var("SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
-        let port = env::var("SERVER_PORT")
+        // Render/Fly set `PORT`; local dev uses `SERVER_PORT`.
+        let port = env::var("PORT")
             .ok()
             .and_then(|port| port.parse::<u16>().ok())
+            .or_else(|| {
+                env::var("SERVER_PORT")
+                    .ok()
+                    .and_then(|port| port.parse::<u16>().ok())
+            })
             .unwrap_or(3000);
         let hello_message = env::var("HELLO_MESSAGE").unwrap_or_else(|_| "Hello, World!".to_string());
         let app_env = env::var("APP_ENV")
@@ -91,7 +100,10 @@ impl AppConfig {
         let stripe_secret_key = env::var("STRIPE_SECRET_KEY").unwrap_or_default();
         let stripe_webhook_secret = env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
         let frontend_url = env::var("FRONTEND_URL")
-            .unwrap_or_else(|_| "https://localhost:5173".to_string());
+            .unwrap_or_else(|_| "https://localhost:5173".to_string())
+            .trim()
+            .trim_end_matches('/')
+            .to_string();
         let public_dir = env::var("PUBLIC_DIR")
             .map(std::path::PathBuf::from)
             .unwrap_or_else(|_| {
@@ -104,7 +116,10 @@ impl AppConfig {
             .map(std::path::PathBuf::from)
             .unwrap_or_else(|_| public_dir.join("img/tours"));
         let server_public_url = env::var("SERVER_PUBLIC_URL")
-            .unwrap_or_else(|_| format!("http://localhost:{port}"));
+            .unwrap_or_else(|_| format!("http://localhost:{port}"))
+            .trim()
+            .trim_end_matches('/')
+            .to_string();
 
         Self {
             host,
@@ -143,11 +158,53 @@ impl AppConfig {
         format!("{}:{}", self.host, self.port)
     }
 
-    /// Matches Express `NODE_ENV === 'production'` and `APP_ENV === 'production'`.
+    /// `APP_ENV=production` — safer API errors, Secure + SameSite=None JWT cookies.
     pub fn is_production(&self) -> bool {
         self.app_env.eq_ignore_ascii_case("production")
-            || std::env::var("NODE_ENV")
-                .map(|v| v.eq_ignore_ascii_case("production"))
-                .unwrap_or(false)
+    }
+
+    /// JWT cookie `SameSite`: `None` in production (SPA on another subdomain), `Lax` locally.
+    pub fn jwt_cookie_same_site_cross_origin(&self) -> bool {
+        self.is_production()
+    }
+
+    /// Origins allowed for CORS with credentials (`FRONTEND_URL` + dev localhost + optional extras).
+    pub fn cors_origins(&self) -> Vec<HeaderValue> {
+        let mut seen = HashSet::new();
+        let mut origins = Vec::new();
+
+        let mut push = |raw: &str| {
+            let origin = raw.trim().trim_end_matches('/');
+            if origin.is_empty() {
+                return;
+            }
+            if !seen.insert(origin.to_string()) {
+                return;
+            }
+            match HeaderValue::from_str(origin) {
+                Ok(value) => origins.push(value),
+                Err(err) => eprintln!("Warning: skipping invalid CORS origin '{origin}': {err}"),
+            }
+        };
+
+        push(&self.frontend_url);
+
+        if let Ok(extra) = env::var("CORS_EXTRA_ORIGINS") {
+            for part in extra.split(',') {
+                push(part);
+            }
+        }
+
+        if !self.is_production() {
+            for local in [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "https://localhost:5173",
+            ] {
+                push(local);
+            }
+        }
+
+        origins
     }
 }

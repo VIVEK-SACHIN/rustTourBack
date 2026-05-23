@@ -60,14 +60,18 @@ Copy from `rustToutBack/.env.example` if needed, then set:
 |----------|---------|---------|
 | `STRIPE_SECRET_KEY` | `sk_test_...` | Server calls Stripe API to create Checkout sessions |
 | `STRIPE_WEBHOOK_SECRET` | `whsec_...` | Verifies `Stripe-Signature` on `POST /webhook-checkout` |
-| `FRONTEND_URL` | `https://localhost:5173` | Success/cancel URLs and product image URL sent to Stripe |
+| `FRONTEND_URL` | `https://tour.vivekdev.fun` | SPA origin: CORS, Stripe success/cancel redirects (no trailing slash) |
+| `SERVER_PUBLIC_URL` | `https://tourapi.vivekdev.fun` | Public API base for Stripe product images |
+| `APP_ENV` | `production` | Enables `Secure` + `SameSite=None` JWT cookies for cross-subdomain API |
 
 Also keep your usual DB/JWT vars (`DATABASE` or `DATABASE_LOCAL`, `JWT_SECRET`, etc.).
 
 ```env
 STRIPE_SECRET_KEY=sk_test_your_secret_key
 STRIPE_WEBHOOK_SECRET=whsec_from_stripe_listen
-FRONTEND_URL=https://localhost:5173
+FRONTEND_URL=https://tour.vivekdev.fun
+SERVER_PUBLIC_URL=https://tourapi.vivekdev.fun
+APP_ENV=production
 ```
 
 Restart the Rust API after changing these values.
@@ -83,7 +87,9 @@ Copy from `TravelFrontend/.env.example`:
 | `VITE_MAPBOX_TOKEN` | `pk....` | Tour map (unrelated to payments) |
 
 ```env
-VITE_API_URL=http://localhost:3000/api/v1
+# Production build:
+VITE_API_URL=https://tourapi.vivekdev.fun/api/v1
+VITE_SERVER_URL=https://tourapi.vivekdev.fun
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key
 VITE_MAPBOX_TOKEN=your_mapbox_token
 ```
