@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use mongodb::bson::{oid::ObjectId};
 use serde::{Deserialize, Serialize};
 
+use crate::models::billing::BillingDetails;
 use crate::models::factory_model::FactoryModel;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,6 +21,8 @@ pub struct Booking {
     pub created_at: Option<DateTime<Utc>>,
     #[serde(default = "default_paid")]
     pub paid: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub billing: Option<BillingDetails>,
 }
 
 fn default_paid() -> bool {
@@ -37,14 +40,19 @@ impl FactoryModel for Booking {
 }
 
 impl Booking {
-    pub fn new(tour: ObjectId, user: ObjectId, price: f64) -> Self {
+    pub fn new(tour: ObjectId, user: ObjectId, price: f64, billing: Option<BillingDetails>) -> Self {
+        let paid = billing
+            .as_ref()
+            .map(|b| b.payment_status == "paid")
+            .unwrap_or(true);
         Self {
             id: None,
             tour,
             user,
             price,
             created_at: Some(Utc::now()),
-            paid: true,
+            paid,
+            billing,
         }
     }
 }

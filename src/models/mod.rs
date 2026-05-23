@@ -1,3 +1,4 @@
+pub mod billing;
 pub mod booking;
 pub mod bson_chrono;
 pub mod factory_model;

@@ -11,6 +11,7 @@ use mongodb::bson::{doc, oid::ObjectId};
 use serde_json::{json, Value};
 
 use crate::handlers::handler_factory;
+use crate::models::billing::BillingDetails;
 use crate::models::booking::Booking;
 use crate::models::user::User;
 use crate::models::Tour;
@@ -46,15 +47,10 @@ pub async fn get_checkout_session(
     })))
 }
 
-/// `GET /api/v1/bookings/my` (protected) — current user's bookings with tour details.
-pub async fn get_my_bookings(
-    State(state): State<AppState>,
-    Extension(user): Extension<User>,
-) -> Result<Json<Value>, AppError> {
-    let user_id = user
-        .id
-        .ok_or_else(|| AppError::internal("User missing _id"))?;
-
+async fn list_my_bookings_with_tours(
+    state: &AppState,
+    user_id: ObjectId,
+) -> Result<Vec<Value>, AppError> {
     let db = state.client.database("natours");
     let bookings_coll = db.collection::<Booking>("bookings");
     let tours_coll = db.collection::<Tour>("tours");
@@ -85,9 +81,42 @@ pub async fn get_my_bookings(
             "price": booking.price,
             "paid": booking.paid,
             "createdAt": booking.created_at,
+            "billing": booking.billing,
             "tour": tour,
         }));
     }
+
+    Ok(docs)
+}
+
+/// `GET /api/v1/bookings/my` (protected) — current user's bookings with tour details.
+pub async fn get_my_bookings(
+    State(state): State<AppState>,
+    Extension(user): Extension<User>,
+) -> Result<Json<Value>, AppError> {
+    let user_id = user
+        .id
+        .ok_or_else(|| AppError::internal("User missing _id"))?;
+
+    let docs = list_my_bookings_with_tours(&state, user_id).await?;
+
+    Ok(Json(json!({
+        "status": "success",
+        "results": docs.len(),
+        "data": { "docs": docs }
+    })))
+}
+
+/// `GET /api/v1/billing/my` — same records as bookings, for the account billing tab.
+pub async fn get_my_billing(
+    State(state): State<AppState>,
+    Extension(user): Extension<User>,
+) -> Result<Json<Value>, AppError> {
+    let user_id = user
+        .id
+        .ok_or_else(|| AppError::internal("User missing _id"))?;
+
+    let docs = list_my_bookings_with_tours(&state, user_id).await?;
 
     Ok(Json(json!({
         "status": "success",
@@ -135,8 +164,22 @@ async fn create_booking_from_checkout_session(
 
     let user_id = user.id.ok_or_else(|| AppError::internal("User missing _id"))?;
 
+    let price = price_cents as f64 / 100.0;
+    let billing = BillingDetails::from_checkout_session(session, price);
+
     let bookings = db.collection::<Booking>("bookings");
-    let booking = Booking::new(tour_oid, user_id, price_cents as f64 / 100.0);
+
+    if let Some(ref b) = billing {
+        let existing = bookings
+            .find_one(doc! { "billing.stripeSessionId": &b.stripe_session_id })
+            .await
+            .map_err(AppError::from)?;
+        if existing.is_some() {
+            return Ok(());
+        }
+    }
+
+    let booking = Booking::new(tour_oid, user_id, price, billing);
     bookings
         .insert_one(&booking)
         .await
