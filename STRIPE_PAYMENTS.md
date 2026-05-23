@@ -1,6 +1,6 @@
 # Stripe payments — setup, env vars, and local dev
 
-This document describes how Stripe Checkout is integrated in this repo: **TravelFrontend** (React) + **rustToutBack** (Rust API). The flow mirrors the original **TravelAndTour** (Express) TravelAndTour booking pattern.
+This document describes how Stripe Checkout is integrated in this repo: **TravelFrontend** (React) + **rustTourBack** (Rust API). The flow mirrors the original **TravelAndTour** (Express) TravelAndTour booking pattern.
 
 ---
 
@@ -44,7 +44,7 @@ Stripe must notify your server when checkout completes. On localhost you use the
    stripe listen --forward-to localhost:3000/webhook-checkout
    ```
 
-4. Copy the **`whsec_...`** line printed at startup into `rustToutBack/.env` as `STRIPE_WEBHOOK_SECRET`.
+4. Copy the **`whsec_...`** line printed at startup into `rustTourBack/.env` as `STRIPE_WEBHOOK_SECRET`.
 
 > **Production:** You would register a fixed HTTPS URL in **Developers → Webhooks** in the Dashboard and use that endpoint’s signing secret instead of the CLI secret.
 
@@ -52,9 +52,9 @@ Stripe must notify your server when checkout completes. On localhost you use the
 
 ## 2. Environment variables
 
-### 2.1 Backend — `rustToutBack/.env`
+### 2.1 Backend — `rustTourBack/.env`
 
-Copy from `rustToutBack/.env.example` if needed, then set:
+Copy from `rustTourBack/.env.example` if needed, then set:
 
 | Variable | Example | Purpose |
 |----------|---------|---------|
@@ -100,7 +100,7 @@ Restart the Vite dev server after editing `.env`.
 
 - Never commit real `.env` files (use `.env.example` as templates).
 - Use **test** keys (`pk_test_`, `sk_test_`) locally.
-- `sk_test_` and `whsec_` must stay on the server / in `rustToutBack` only.
+- `sk_test_` and `whsec_` must stay on the server / in `rustTourBack` only.
 
 ---
 
@@ -110,7 +110,7 @@ Restart the Vite dev server after editing `.env`.
 sequenceDiagram
     participant User
     participant Frontend as TravelFrontend
-    participant API as rustToutBack (Rust)
+    participant API as rustTourBack (Rust)
     participant Stripe
     participant DB as MongoDB
 
@@ -136,8 +136,8 @@ sequenceDiagram
 2. **Create Checkout session (protected API)**  
    - Route: `GET /api/v1/bookings/checkout-session/:tourId`  
    - Auth: JWT in HTTP-only cookie (same as other protected routes).  
-   - Handler: `rustToutBack/src/handlers/bookings.rs` → `get_checkout_session`  
-   - Service: `rustToutBack/src/services/stripe.rs` → `create_checkout_session`  
+   - Handler: `rustTourBack/src/handlers/bookings.rs` → `get_checkout_session`  
+   - Service: `rustTourBack/src/services/stripe.rs` → `create_checkout_session`  
    - Stripe receives: mode `payment`, line item from tour price/name/summary, `customer_email`, `client_reference_id` = tour MongoDB id, success URL `{FRONTEND_URL}/me?alert=booking`, cancel URL `{FRONTEND_URL}/tour/{slug}`.
 
 3. **Browser redirect to Stripe**  
@@ -148,7 +148,7 @@ sequenceDiagram
 
 5. **Webhook creates the booking**  
    - Stripe sends `POST http://localhost:3000/webhook-checkout` with raw body and `Stripe-Signature`.  
-   - This route is mounted **before** JSON body middleware so the signature can be verified on raw bytes (`rustToutBack/src/main.rs`).  
+   - This route is mounted **before** JSON body middleware so the signature can be verified on raw bytes (`rustTourBack/src/main.rs`).  
    - On event type `checkout.session.completed`, the server reads `client_reference_id` (tour id), `customer_email`, and `amount_total`, finds the user, and inserts a document into the `bookings` collection.
 
 6. **Success redirect**  
@@ -162,9 +162,9 @@ sequenceDiagram
 | Frontend checkout call | `TravelFrontend/src/api/bookings.ts` |
 | Tour page button | `TravelFrontend/src/pages/TourDetail.tsx` |
 | Success UI | `TravelFrontend/src/pages/Account.tsx` |
-| Checkout + webhook handlers | `rustToutBack/src/handlers/bookings.rs` |
-| Stripe HTTP + signature verify | `rustToutBack/src/services/stripe.rs` |
-| Routes | `rustToutBack/src/routes/booking_routes.rs`, `rustToutBack/src/main.rs` |
+| Checkout + webhook handlers | `rustTourBack/src/handlers/bookings.rs` |
+| Stripe HTTP + signature verify | `rustTourBack/src/services/stripe.rs` |
+| Routes | `rustTourBack/src/routes/booking_routes.rs`, `rustTourBack/src/main.rs` |
 
 ### Test card (no real payment)
 
@@ -191,11 +191,11 @@ Use **three terminals**. Order: API and frontend can start anytime; start `strip
 ### Terminal 1 — Rust API (port 3000)
 
 ```bash
-cd rustToutBack
+cd rustTourBack
 cargo run
 ```
 
-Requires MongoDB reachable via `DATABASE` / `DATABASE_LOCAL` in `rustToutBack/.env`.
+Requires MongoDB reachable via `DATABASE` / `DATABASE_LOCAL` in `rustTourBack/.env`.
 
 ### Terminal 2 — React frontend (port 5173)
 
@@ -214,13 +214,13 @@ Open [https://localhost:5173](https://localhost:5173).
 stripe listen --forward-to localhost:3000/webhook-checkout
 ```
 
-1. Copy the displayed **`whsec_...`** into `rustToutBack/.env` → `STRIPE_WEBHOOK_SECRET`.
+1. Copy the displayed **`whsec_...`** into `rustTourBack/.env` → `STRIPE_WEBHOOK_SECRET`.
 2. **Restart** Terminal 1 (`cargo run`) if you changed the secret.
 
 ### Quick test checklist
 
 - [ ] Logged in on the frontend  
-- [ ] `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FRONTEND_URL` set in `rustToutBack/.env`  
+- [ ] `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FRONTEND_URL` set in `rustTourBack/.env`  
 - [ ] `VITE_STRIPE_PUBLISHABLE_KEY` and `VITE_API_URL` set in `TravelFrontend/.env`  
 - [ ] `stripe listen` running; API restarted after updating webhook secret  
 - [ ] Pay with `4242 4242 4242 4242`  
