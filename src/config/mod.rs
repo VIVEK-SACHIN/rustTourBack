@@ -195,15 +195,18 @@ impl AppConfig {
             }
         }
 
-        if !self.is_production() {
+        // if !self.is_production() {
             for local in [
                 "http://localhost:3000",
+                "https://localhost:3000",
                 "http://localhost:5173",
                 "https://localhost:5173",
+                "http://localhost:5174",
+                "https://localhost:5174",
             ] {
                 push(local);
             }
-        }
+        // }
 
         origins
     }
