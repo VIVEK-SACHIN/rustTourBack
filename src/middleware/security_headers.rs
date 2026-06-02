@@ -7,6 +7,9 @@ use axum::{
 };
 
 pub async fn security_headers_middleware(request: Request<Body>, next: Next) -> Response<Body> {
+    // Capture the request path before consuming the request in `next.run`.
+    let path = request.uri().path().to_string();
+
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
 
@@ -15,7 +18,14 @@ pub async fn security_headers_middleware(request: Request<Body>, next: Next) -> 
     set(headers, "X-DNS-Prefetch-Control", "off");
     set(headers, "Referrer-Policy", "no-referrer");
     set(headers, "Cross-Origin-Opener-Policy", "same-origin");
-    set(headers, "Cross-Origin-Resource-Policy", "same-origin");
+    // Allow embedding resources under `/img/*` from other origins by using
+    // `Cross-Origin-Resource-Policy: cross-origin` for those paths. Keep the
+    // stricter `same-origin` for other responses.
+    if path.starts_with("/img") {
+        set(headers, "Cross-Origin-Resource-Policy", "cross-origin");
+    } else {
+        set(headers, "Cross-Origin-Resource-Policy", "same-origin");
+    }
     set(headers, "Origin-Agent-Cluster", "?1");
     set(headers, "X-Download-Options", "noopen");
     set(headers, "X-Permitted-Cross-Domain-Policies", "none");
