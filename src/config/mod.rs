@@ -203,6 +203,7 @@ impl AppConfig {
                 "https://localhost:5173",
                 "http://localhost:5174",
                 "https://localhost:5174",
+                "https://vivek-sachin.github.io"
             ] {
                 push(local);
             }
