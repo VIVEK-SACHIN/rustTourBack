@@ -6,6 +6,7 @@ mod middleware;
 mod models;
 mod routes;
 mod services;
+mod signalling;
 mod state;
 mod utils;
 
@@ -141,6 +142,11 @@ async fn main() {
         .nest_service("/img", ServeDir::new(static_img_dir))
         .fallback(handle_not_found)
         .with_state(app_state)
+        // WebRTC mesh signaling channel (own state) — GET /ws + /ws/health.
+        // Merged after `.with_state` so both routers are `Router<()>`; the
+        // shared layers below (CORS, compression, logging, panic catch) still
+        // wrap it.
+        .merge(signalling::router())
         .layer(CompressionLayer::new())
         .layer(RequestBodyLimitLayer::new(5 * 1024 * 1024))
         .layer(axum_middleware::from_fn(
