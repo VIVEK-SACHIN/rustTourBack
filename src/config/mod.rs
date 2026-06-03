@@ -197,13 +197,14 @@ impl AppConfig {
 
         // if !self.is_production() {
             for local in [
-                "http://localhost:3000",
-                "https://localhost:3000",
                 "http://localhost:5173",
                 "https://localhost:5173",
                 "http://localhost:5174",
                 "https://localhost:5174",
-                "https://vivek-sachin.github.io"
+                "https://vivek-sachin.github.io",
+                "tour.vivekdev.fun",
+                "conferencing.vivekdev.fun",
+                "vivekdev.fun",
             ] {
                 push(local);
             }
